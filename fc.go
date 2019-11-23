@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func NewFileCombinator(mount string, mode os.FileMode) (*FileSystem, error) {
+func NewFileSystem(mount string, mode os.FileMode) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
 	if err := mkdir(mount, mode); err != nil {
 		return nil, err
@@ -36,9 +36,9 @@ func (r FileReference) URI() url.URL {
 	return *r.u
 }
 
-func mkdir(path string, mode os.FileMode) error {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(path, mode); err != nil {
+func mkdir(p string, mode os.FileMode) error {
+	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(p, mode); err != nil {
 			return err
 		}
 	}
@@ -54,7 +54,7 @@ func (fs FileSystem) Reference(uri string) (Reference, error) {
 }
 
 func (fs FileSystem) path(r Reference) string {
-	return filepath.Join(fs.mount, path.Clean(r.URI().Path))
+	return filepath.Join(fs.mount, path.Clean("/"+r.URI().Path))
 }
 
 type File struct {
@@ -90,8 +90,8 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 }
 
 func (fs FileSystem) Put(r Reference, i interface{}) error {
-	path := fs.path(r)
-	if err := mkdir(filepath.Dir(path), fs.mode); err != nil {
+	p := fs.path(r)
+	if err := mkdir(filepath.Dir(p), fs.mode); err != nil {
 		return err
 	}
 	var buf []byte
@@ -103,7 +103,7 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 	default:
 		buf = []byte(fmt.Sprintf("%v", t))
 	}
-	return ioutil.WriteFile(path, buf, fs.mode)
+	return ioutil.WriteFile(p, buf, fs.mode)
 }
 
 func (fs FileSystem) Delete(r Reference) error {
