@@ -14,7 +14,7 @@ import (
 
 func main() {
 	var store sc.StorageCombinator
-	const s3 = true
+	const s3 = false
 	if s3 {
 		buf, err := ioutil.ReadFile("bucket.txt")
 		check(err)
@@ -47,6 +47,7 @@ func main() {
 	for i := 0; i < 10; i++ {
 		r, err := store.Reference(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
 		check(err)
+		fmt.Println(r)
 		check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
 		buf, err := store.Get(r)
 		check(err)

@@ -1,9 +1,5 @@
 package sc
 
-import (
-	"net/url"
-)
-
 type StorageCombinator interface {
 	Reference(string) (Reference, error)
 	Get(Reference) (interface{}, error)
@@ -12,5 +8,6 @@ type StorageCombinator interface {
 }
 
 type Reference interface {
-	URI() url.URL
+	Scheme() string
+	Path() string
 }

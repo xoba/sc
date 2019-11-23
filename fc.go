@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"time"
 )
@@ -25,15 +24,15 @@ type FileSystem struct {
 }
 
 type FileReference struct {
-	u *url.URL
+	scheme, path string
 }
 
-func (r FileReference) String() string {
-	return r.u.String()
+func (r FileReference) Scheme() string {
+	return r.scheme
 }
 
-func (r FileReference) URI() url.URL {
-	return *r.u
+func (r FileReference) Path() string {
+	return r.path
 }
 
 func mkdir(p string, mode os.FileMode) error {
@@ -50,11 +49,18 @@ func (fs FileSystem) Reference(uri string) (Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	return FileReference{u: u}, nil
+	switch u.Scheme {
+	case "file":
+	case "":
+		u.Scheme = "file"
+	default:
+		return nil, fmt.Errorf("illegal scheme: %q", u.Scheme)
+	}
+	return FileReference{scheme: u.Scheme, path: u.Path}, nil
 }
 
 func (fs FileSystem) path(r Reference) string {
-	return filepath.Join(fs.mount, path.Clean("/"+r.URI().Path))
+	return filepath.Join(fs.mount, r.Path())
 }
 
 type File struct {

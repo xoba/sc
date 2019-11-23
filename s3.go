@@ -33,14 +33,14 @@ func NewS3KeyValue(bucket, prefix string) (*S3KeyValue, error) {
 }
 
 type S3Reference struct {
-	u *url.URL
+	scheme, path string
 }
 
-func (s S3Reference) URI() url.URL {
-	return *s.u
+func (s S3Reference) Scheme() string {
+	return s.scheme
 }
-func (s S3Reference) String() string {
-	return s.u.String()
+func (s S3Reference) Path() string {
+	return s.path
 }
 
 func (fs S3KeyValue) Reference(p string) (Reference, error) {
@@ -48,11 +48,21 @@ func (fs S3KeyValue) Reference(p string) (Reference, error) {
 	if err != nil {
 		return nil, err
 	}
-	return S3Reference{u: u}, nil
+	if u.Host != "" {
+		return nil, fmt.Errorf("illegal host: %q", u.Host)
+	}
+	switch u.Scheme {
+	case "s3":
+	case "":
+		u.Scheme = "s3"
+	default:
+		return nil, fmt.Errorf("illegal scheme: %q", u.Scheme)
+	}
+	return S3Reference{scheme: u.Scheme, path: u.Path}, nil
 }
 
 func (fs S3KeyValue) key(r Reference) string {
-	p := path.Join(fs.prefix, path.Clean("/"+r.URI().Path))
+	p := path.Join(fs.prefix, path.Clean("/"+r.Path()))
 	for {
 		if strings.HasPrefix(p, "/") {
 			p = p[1:]
