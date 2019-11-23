@@ -1,7 +1,6 @@
 package sc
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -9,7 +8,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
+	"time"
 )
 
 func NewFileCombinator(mount string, mode os.FileMode) (*FileSystem, error) {
@@ -27,6 +26,10 @@ type FileSystem struct {
 
 type FileReference struct {
 	u *url.URL
+}
+
+func (r FileReference) String() string {
+	return r.u.String()
 }
 
 func (r FileReference) URI() url.URL {
@@ -54,20 +57,36 @@ func (fs FileSystem) path(r Reference) string {
 	return filepath.Join(fs.mount, path.Clean(r.URI().Path))
 }
 
+type File struct {
+	Name    string
+	Size    int
+	IsDir   bool
+	ModTime time.Time
+}
+
 func (fs FileSystem) Get(r Reference) (interface{}, error) {
-	path := fs.path(r)
-	if strings.HasSuffix(r.URI().Path, "/") {
-		list, err := ioutil.ReadDir(path)
+	p := fs.path(r)
+	fi, err := os.Stat(p)
+	if err != nil {
+		return nil, err
+	}
+	if fi.IsDir() {
+		list, err := ioutil.ReadDir(p)
 		if err != nil {
 			return nil, err
 		}
-		w := new(bytes.Buffer)
+		var files []File
 		for _, fi := range list {
-			fmt.Fprintln(w, fi.Name())
+			files = append(files, File{
+				Name:    fi.Name(),
+				Size:    int(fi.Size()),
+				ModTime: fi.ModTime(),
+				IsDir:   fi.IsDir(),
+			})
 		}
-		return w.Bytes(), nil
+		return files, nil
 	}
-	return ioutil.ReadFile(path)
+	return ioutil.ReadFile(p)
 }
 
 func (fs FileSystem) Put(r Reference, i interface{}) error {
@@ -88,5 +107,5 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 }
 
 func (fs FileSystem) Delete(r Reference) error {
-	return os.Remove(fs.path(r))
+	return os.RemoveAll(fs.path(r))
 }
