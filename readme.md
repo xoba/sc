@@ -1,7 +1,8 @@
 # storage combinators
 
-playing around with storage combinators (weiher & hirschfeld). to get started
-with an example, you could follow this recipe:
+playing around with storage combinators 
+([weiher & hirschfeld](http://hirschfeld.org/writings/media/WeiherHirschfeld_2019_StorageCombinators_AcmDL_Preprint.pdf)). 
+to get started with an example, you could follow this recipe:
 ```
 git clone git@github.com:xoba/sc.git
 cd sc
