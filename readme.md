@@ -12,3 +12,17 @@ or, to use this as a module in your own project, simply run:
 ```
 go get github.com/xoba/sc
 ```
+our interface for storage combinators is as follows, from [sc.go](https://github.com/xoba/sc/blob/master/sc.go):
+```go
+type StorageCombinator interface {
+	Reference(string) (Reference, error) // gets a reference for a path
+	Get(Reference) (interface{}, error)
+	Put(Reference, interface{}) error
+	Delete(Reference) error
+}
+
+type Reference struct {
+	Scheme string
+	Path   string
+}
+```
