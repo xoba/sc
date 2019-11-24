@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -12,44 +13,36 @@ import (
 	"github.com/xoba/sc"
 )
 
+var bucket string
+
+func init() {
+	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip")
+	flag.Parse()
+}
+
 func main() {
+	newFs := func() sc.StorageCombinator {
+		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
+		check(err)
+		return fs
+	}
 	var store sc.StorageCombinator
-	{
+	if bucket == "" {
+		store = newFs()
+	} else {
 		buf, err := ioutil.ReadFile("bucket.txt")
 		check(err)
 		s3, err := sc.NewS3KeyValue("s3", strings.TrimSpace(string(buf)), "myprefix")
 		check(err)
-		store = s3
-		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
-		check(err)
-		store = fs
 		m, err := sc.NewMultiplexer("mult", map[string]sc.StorageCombinator{
-			"subdir0": fs,
-			"subdir1": s3,
+			"dir0": newFs(),
+			"dir1": s3,
 		})
 		check(err)
 		store = m
 	}
-
-	show := func(i interface{}) string {
-		switch t := i.(type) {
-		case []byte:
-			return string(t)
-		case string:
-			return t
-		case []sc.File:
-			w := new(bytes.Buffer)
-			e := json.NewEncoder(w)
-			for _, x := range t {
-				check(e.Encode(x))
-			}
-			return w.String()
-		default:
-			return fmt.Sprintf("%v\n", t)
-		}
-	}
 	for j := 0; j < 2; j++ {
-		dir := fmt.Sprintf("/subdir%d/subdir", j)
+		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 10; i++ {
 			r, err := store.Reference(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
 			check(err)
@@ -60,12 +53,35 @@ func main() {
 			fmt.Printf("got %q\n", show(buf))
 		}
 	}
-	r2, err := store.Reference("/subdir0")
+	r2, err := store.Reference("/dir0")
 	check(err)
 	listing, err := store.Get(r2)
-	check(err)
-	fmt.Print(show(listing))
-	check(Traverse(store, "/"))
+	if err == nil {
+		fmt.Print(show(listing))
+	} else {
+		fmt.Printf("can't get %s\n", r2)
+	}
+	if err := Traverse(store, "/"); err != nil {
+		fmt.Printf("can't traverse '/'\n")
+	}
+}
+
+func show(i interface{}) string {
+	switch t := i.(type) {
+	case []byte:
+		return string(t)
+	case string:
+		return t
+	case []sc.File:
+		w := new(bytes.Buffer)
+		e := json.NewEncoder(w)
+		for _, x := range t {
+			check(e.Encode(x))
+		}
+		return w.String()
+	default:
+		return fmt.Sprintf("%v\n", t)
+	}
 }
 
 func Traverse(store sc.StorageCombinator, p string) error {

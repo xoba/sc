@@ -1,5 +1,7 @@
 package sc
 
+import "encoding/json"
+
 type StorageCombinator interface {
 	Reference(string) (Reference, error) // gets a reference for a path
 	Get(Reference) (interface{}, error)
@@ -10,4 +12,9 @@ type StorageCombinator interface {
 type Reference struct {
 	Scheme string
 	Path   string
+}
+
+func (r Reference) String() string {
+	buf, _ := json.Marshal(r)
+	return string(buf)
 }

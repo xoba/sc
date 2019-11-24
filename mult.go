@@ -38,7 +38,7 @@ func (m Multiplexer) find(r Reference) (StorageCombinator, *Reference, error) {
 	}
 	c, ok := m.m[first]
 	if !ok {
-		return nil, nil, fmt.Errorf("unsupported path: %q", r.Scheme)
+		return nil, nil, fmt.Errorf("unsupported path: %q", r.Path)
 	}
 	r2, err := c.Reference(r.Path)
 	if err != nil {

@@ -1,5 +1,4 @@
-bin
-pkg
 *~
+bin
 diskstore
-bucket.txt
+pkg
