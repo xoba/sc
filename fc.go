@@ -31,11 +31,11 @@ func mkdir(p string, mode os.FileMode) error {
 	return nil
 }
 
-func (fs FileSystem) Reference(p string) (Reference, error) {
-	return Reference{Scheme: fs.scheme, Path: p}, nil
+func (fs FileSystem) Reference(p string) (*Reference, error) {
+	return &Reference{Scheme: fs.scheme, Path: p}, nil
 }
 
-func (fs FileSystem) path(r Reference) string {
+func (fs FileSystem) path(r *Reference) string {
 	return filepath.Join(fs.mount, filepath.Clean("/"+r.Path))
 }
 
@@ -46,14 +46,14 @@ type File struct {
 	ModTime time.Time
 }
 
-func (fs FileSystem) goodRef(r Reference) error {
+func (fs FileSystem) goodRef(r *Reference) error {
 	if r.Scheme != fs.scheme {
 		return fmt.Errorf("bad scheme: %q", r.Scheme)
 	}
 	return nil
 }
 
-func (fs FileSystem) Get(r Reference) (interface{}, error) {
+func (fs FileSystem) Get(r *Reference) (interface{}, error) {
 	if err := fs.goodRef(r); err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 	return ioutil.ReadFile(p)
 }
 
-func (fs FileSystem) Put(r Reference, i interface{}) error {
+func (fs FileSystem) Put(r *Reference, i interface{}) error {
 	if err := fs.goodRef(r); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 	return ioutil.WriteFile(p, buf, fs.mode)
 }
 
-func (fs FileSystem) Delete(r Reference) error {
+func (fs FileSystem) Delete(r *Reference) error {
 	if err := fs.goodRef(r); err != nil {
 		return err
 	}
