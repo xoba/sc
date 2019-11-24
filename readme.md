@@ -7,7 +7,7 @@ to get started with an example, you could follow this recipe:
 git clone git@github.com:xoba/sc.git
 cd sc
 export GOPATH=/tmp/gopath
-go run src/main.go
+go run src/main.go -help
 ```
 or, to use this as a module in your own project, simply run:
 ```
@@ -27,3 +27,5 @@ type Reference struct {
 	Path   string
 }
 ```
+for using the s3 combinator, follow normal configuration conventions for using the aws sdk, such as having 
+`~/.aws/credentials` and `~/.aws/config` files.
