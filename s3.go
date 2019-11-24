@@ -32,11 +32,11 @@ func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
 	}, nil
 }
 
-func (fs S3KeyValue) Reference(p string) (Reference, error) {
-	return Reference{Scheme: fs.scheme, Path: p}, nil
+func (fs S3KeyValue) Reference(p string) (*Reference, error) {
+	return &Reference{Scheme: fs.scheme, Path: p}, nil
 }
 
-func (fs S3KeyValue) key(r Reference) string {
+func (fs S3KeyValue) key(r *Reference) string {
 	p := path.Join(fs.prefix, path.Clean("/"+r.Path))
 	for {
 		if strings.HasPrefix(p, "/") {
@@ -48,14 +48,14 @@ func (fs S3KeyValue) key(r Reference) string {
 	return p
 }
 
-func (fs S3KeyValue) goodRef(r Reference) error {
+func (fs S3KeyValue) goodRef(r *Reference) error {
 	if r.Scheme != fs.scheme {
 		return fmt.Errorf("bad scheme: %q", r.Scheme)
 	}
 	return nil
 }
 
-func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
+func (fs S3KeyValue) Get(r *Reference) (interface{}, error) {
 	if err := fs.goodRef(r); err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 	return w.Bytes(), nil
 }
 
-func (fs S3KeyValue) Put(r Reference, i interface{}) error {
+func (fs S3KeyValue) Put(r *Reference, i interface{}) error {
 	if err := fs.goodRef(r); err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	return nil
 }
 
-func (fs S3KeyValue) Delete(r Reference) error {
+func (fs S3KeyValue) Delete(r *Reference) error {
 	if err := fs.goodRef(r); err != nil {
 		return err
 	}
