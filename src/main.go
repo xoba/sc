@@ -18,11 +18,11 @@ func main() {
 	if s3 {
 		buf, err := ioutil.ReadFile("bucket.txt")
 		check(err)
-		s3, err := sc.NewS3KeyValue(strings.TrimSpace(string(buf)), "myprefix")
+		s3, err := sc.NewS3KeyValue("s3", strings.TrimSpace(string(buf)), "myprefix")
 		check(err)
 		store = s3
 	} else {
-		fs, err := sc.NewFileSystem("diskstore", os.ModePerm)
+		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
 		check(err)
 		store = fs
 	}

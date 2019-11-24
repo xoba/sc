@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/url"
 	"path"
 	"strings"
 
@@ -14,11 +13,11 @@ import (
 )
 
 type S3KeyValue struct {
-	bucket, prefix string
-	svc            *s3.S3
+	scheme, bucket, prefix string
+	svc                    *s3.S3
 }
 
-func NewS3KeyValue(bucket, prefix string) (*S3KeyValue, error) {
+func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
 	p, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})
@@ -26,43 +25,19 @@ func NewS3KeyValue(bucket, prefix string) (*S3KeyValue, error) {
 		return nil, err
 	}
 	return &S3KeyValue{
+		scheme: scheme,
 		bucket: bucket,
 		prefix: prefix,
 		svc:    s3.New(p),
 	}, nil
 }
 
-type S3Reference struct {
-	scheme, path string
-}
-
-func (s S3Reference) Scheme() string {
-	return s.scheme
-}
-func (s S3Reference) Path() string {
-	return s.path
-}
-
 func (fs S3KeyValue) Reference(p string) (Reference, error) {
-	u, err := url.Parse(p)
-	if err != nil {
-		return nil, err
-	}
-	if u.Host != "" {
-		return nil, fmt.Errorf("illegal host: %q", u.Host)
-	}
-	switch u.Scheme {
-	case "s3":
-	case "":
-		u.Scheme = "s3"
-	default:
-		return nil, fmt.Errorf("illegal scheme: %q", u.Scheme)
-	}
-	return S3Reference{scheme: u.Scheme, path: u.Path}, nil
+	return Reference{Scheme: fs.scheme, Path: p}, nil
 }
 
 func (fs S3KeyValue) key(r Reference) string {
-	p := path.Join(fs.prefix, path.Clean("/"+r.Path()))
+	p := path.Join(fs.prefix, path.Clean("/"+r.Path))
 	for {
 		if strings.HasPrefix(p, "/") {
 			p = p[1:]
@@ -73,7 +48,17 @@ func (fs S3KeyValue) key(r Reference) string {
 	return p
 }
 
+func (fs S3KeyValue) goodRef(r Reference) error {
+	if r.Scheme != fs.scheme {
+		return fmt.Errorf("bad scheme: %q", r.Scheme)
+	}
+	return nil
+}
+
 func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
+	if err := fs.goodRef(r); err != nil {
+		return nil, err
+	}
 	resp, err := fs.svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(fs.bucket),
 		Key:    aws.String(fs.key(r)),
@@ -90,6 +75,9 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 }
 
 func (fs S3KeyValue) Put(r Reference, i interface{}) error {
+	if err := fs.goodRef(r); err != nil {
+		return err
+	}
 	var rs io.ReadSeeker
 	switch t := i.(type) {
 	case string:
@@ -112,6 +100,9 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	return nil
 }
 
-func (fs S3KeyValue) Delete(Reference) error {
+func (fs S3KeyValue) Delete(r Reference) error {
+	if err := fs.goodRef(r); err != nil {
+		return err
+	}
 	return fmt.Errorf("Delete unimplemented")
 }
