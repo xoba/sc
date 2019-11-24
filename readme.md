@@ -28,4 +28,16 @@ type Reference struct {
 }
 ```
 for using the s3 combinator, follow normal configuration conventions for using the aws sdk, such as having 
-`~/.aws/credentials` and `~/.aws/config` files.
+`~/.aws/credentials` and `~/.aws/config` files; e.g.:
+```
+[default]
+aws_access_key_id = ********
+aws_secret_access_key = ********
+```
+and
+```
+[default]
+output = json
+region = us-east-1
+```
+respectively.
