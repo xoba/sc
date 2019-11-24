@@ -14,18 +14,23 @@ import (
 
 func main() {
 	var store sc.StorageCombinator
-	const s3 = false
-	if s3 {
+	{
 		buf, err := ioutil.ReadFile("bucket.txt")
 		check(err)
 		s3, err := sc.NewS3KeyValue("s3", strings.TrimSpace(string(buf)), "myprefix")
 		check(err)
 		store = s3
-	} else {
 		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
 		check(err)
 		store = fs
+		m, err := sc.NewMultiplexer("mult", map[string]sc.StorageCombinator{
+			"subdir0": fs,
+			"subdir1": s3,
+		})
+		check(err)
+		store = m
 	}
+
 	show := func(i interface{}) string {
 		switch t := i.(type) {
 		case []byte:
@@ -43,25 +48,24 @@ func main() {
 			return fmt.Sprintf("%v\n", t)
 		}
 	}
-	const dir = "/subdir1/subdir2"
-	for i := 0; i < 10; i++ {
-		r, err := store.Reference(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
-		check(err)
-		fmt.Println(r)
-		check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
-		buf, err := store.Get(r)
-		check(err)
-		fmt.Printf("got %q\n", show(buf))
+	for j := 0; j < 2; j++ {
+		dir := fmt.Sprintf("/subdir%d/subdir", j)
+		for i := 0; i < 10; i++ {
+			r, err := store.Reference(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
+			check(err)
+			fmt.Println(r)
+			check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
+			buf, err := store.Get(r)
+			check(err)
+			fmt.Printf("got %q\n", show(buf))
+		}
 	}
-	if s3 {
-		return
-	}
-	r2, err := store.Reference(dir)
+	r2, err := store.Reference("/subdir0")
 	check(err)
 	listing, err := store.Get(r2)
 	check(err)
 	fmt.Print(show(listing))
-	check(Traverse(store, "."))
+	check(Traverse(store, "/"))
 }
 
 func Traverse(store sc.StorageCombinator, p string) error {
