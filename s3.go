@@ -66,6 +66,8 @@ func (fs S3KeyValue) s3ref(r Reference) (*S3Reference, error) {
 		var s3ref S3Reference
 		if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
 			s3ref.Bucket = u.Host
+		} else {
+			s3ref.Bucket = fs.bucket
 		}
 		s3ref.Key = removeLeadingSlashes(u.Path)
 		return &s3ref, nil
@@ -99,12 +101,17 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 		rs = strings.NewReader(t)
 	case []byte:
 		rs = bytes.NewReader(t)
+	case fmt.Stringer:
+		rs = strings.NewReader(t.String())
 	default:
 		w := new(bytes.Buffer)
 		fmt.Fprintf(w, "%v", t)
 		rs = bytes.NewReader(w.Bytes())
 	}
-	s3ref := fs.s3ref(r)
+	s3ref, err := fs.s3ref(r)
+	if err != nil {
+		return err
+	}
 	poi := s3.PutObjectInput{
 		Bucket: aws.String(s3ref.Bucket),
 		Key:    aws.String(s3ref.Key),
@@ -113,13 +120,13 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	if s3ref.Public {
 		poi.ACL = aws.String("public-read")
 	}
-	_, err := fs.svc.PutObject(&poi)
-	if err != nil {
+	if _, err := fs.svc.PutObject(&poi); err != nil {
+		fmt.Printf("oops: %v\n", err)
 		return err
 	}
 	return nil
 }
 
-func (fs S3KeyValue) Delete(r *Reference) error {
+func (fs S3KeyValue) Delete(r Reference) error {
 	return fmt.Errorf("Delete unimplemented")
 }

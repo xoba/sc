@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
-	"strings"
 
 	"github.com/xoba/sc"
 )
@@ -18,6 +17,24 @@ var bucket string
 func init() {
 	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip")
 	flag.Parse()
+}
+
+type Ref struct {
+	u url.URL
+}
+
+func (r Ref) String() string {
+	return r.u.String()
+}
+
+func NewRef(p string) Ref {
+	var r Ref
+	r.u.Path = p
+	return r
+}
+
+func (r Ref) URI() url.URL {
+	return r.u
 }
 
 func main() {
@@ -30,9 +47,7 @@ func main() {
 	if bucket == "" {
 		store = newFs()
 	} else {
-		buf, err := ioutil.ReadFile("bucket.txt")
-		check(err)
-		s3, err := sc.NewS3KeyValue("s3", strings.TrimSpace(string(buf)), "myprefix")
+		s3, err := sc.NewS3KeyValue("s3", bucket, "myprefix")
 		check(err)
 		m, err := sc.NewMultiplexer("mult", map[string]sc.StorageCombinator{
 			"dir0": newFs(),
@@ -45,8 +60,7 @@ func main() {
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 10; i++ {
-			r, err := store.Reference(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
-			check(err)
+			r := NewRef(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
 			fmt.Println(r)
 			check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
 			buf, err := store.Get(r)
@@ -54,8 +68,7 @@ func main() {
 			fmt.Printf("got %q\n", show(buf))
 		}
 	}
-	r2, err := store.Reference("/dir0")
-	check(err)
+	r2 := NewRef("/dir0")
 	listing, err := store.Get(r2)
 	if err == nil {
 		fmt.Print(show(listing))
@@ -90,10 +103,7 @@ func Traverse(store sc.StorageCombinator, p string) error {
 }
 
 func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
-	ref, err := store.Reference(p)
-	if err != nil {
-		return err
-	}
+	ref := NewRef(p)
 	i, err := store.Get(ref)
 	if err != nil {
 		return err
@@ -112,7 +122,6 @@ func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
 				}
 			}
 		}
-	default:
 	}
 	return nil
 }
