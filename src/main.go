@@ -86,7 +86,7 @@ func show(i interface{}) string {
 		return string(t)
 	case string:
 		return t
-	case []sc.File:
+	case []sc.FileReference:
 		w := new(bytes.Buffer)
 		e := json.NewEncoder(w)
 		for _, x := range t {
@@ -113,7 +113,7 @@ func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
 		prefix += "  "
 	}
 	switch t := i.(type) {
-	case []sc.File:
+	case []sc.FileReference:
 		for _, x := range t {
 			fmt.Printf("%s%s (%d)\n", prefix, x.Name, x.Size)
 			if x.IsDir {

@@ -20,6 +20,10 @@ func (pt Passthrough) Put(r Reference, i interface{}) error {
 	return pt.c.Put(r, i)
 }
 
+func (pt Passthrough) Merge(r Reference, i interface{}) error {
+	return unimplemented(pt, "Merge")
+}
+
 func (pt Passthrough) Delete(r Reference) error {
 	return pt.c.Delete(r)
 }

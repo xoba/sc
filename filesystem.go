@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"time"
 )
@@ -35,19 +37,21 @@ func (fs FileSystem) path(r Reference) string {
 	return filepath.Join(fs.mount, filepath.Clean("/"+r.URI().Path))
 }
 
-type File struct {
+type FileReference struct {
 	Name    string
 	Size    int
 	IsDir   bool
 	ModTime time.Time
 }
 
-func (f File) Scheme() string {
-	return "file"
-}
-
-func (f File) Path() string {
-	return f.Name
+func (f FileReference) URI() url.URL {
+	var u url.URL
+	u.Scheme = "file"
+	u.Path = path.Clean(f.Name)
+	if f.IsDir {
+		u.Path += "/"
+	}
+	return u
 }
 
 func (fs FileSystem) Get(r Reference) (interface{}, error) {
@@ -61,9 +65,9 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		var files []File
+		var files []FileReference
 		for _, fi := range list {
-			files = append(files, File{
+			files = append(files, FileReference{
 				Name:    fi.Name(),
 				Size:    int(fi.Size()),
 				ModTime: fi.ModTime(),
@@ -90,6 +94,10 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 		buf = []byte(fmt.Sprintf("%v", t))
 	}
 	return ioutil.WriteFile(p, buf, fs.mode)
+}
+
+func (fs FileSystem) Merge(r Reference, i interface{}) error {
+	return unimplemented(fs, "Merge")
 }
 
 func (fs FileSystem) Delete(r Reference) error {

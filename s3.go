@@ -127,6 +127,10 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	return nil
 }
 
+func (fs S3KeyValue) Merge(r Reference, i interface{}) error {
+	return unimplemented(fs, "Merge")
+}
+
 func (fs S3KeyValue) Delete(r Reference) error {
-	return fmt.Errorf("Delete unimplemented")
+	return unimplemented(fs, "Delete")
 }

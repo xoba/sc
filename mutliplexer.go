@@ -57,6 +57,10 @@ func (m Multiplexer) Put(r Reference, i interface{}) error {
 	return c.Put(r, i)
 }
 
+func (fs Multiplexer) Merge(r Reference, i interface{}) error {
+	return unimplemented(fs, "Merge")
+}
+
 func (m Multiplexer) Delete(r Reference) error {
 	c, err := m.find(r)
 	if err != nil {
