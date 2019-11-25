@@ -28,49 +28,39 @@ func firstPathComponent(p string) (string, error) {
 	return "", fmt.Errorf("no first path component")
 }
 
-func (m Multiplexer) find(r *Reference) (StorageCombinator, *Reference, error) {
-	if r.Scheme != m.scheme {
-		return nil, nil, fmt.Errorf("bad scheme")
-	}
-	first, err := firstPathComponent(r.Path)
-	if err != nil {
-		return nil, nil, err
-	}
-	c, ok := m.m[first]
-	if !ok {
-		return nil, nil, fmt.Errorf("unsupported path: %q", r.Path)
-	}
-	r2, err := c.Reference(r.Path)
-	if err != nil {
-		return nil, nil, err
-	}
-	return c, r2, nil
-}
-
-func (m Multiplexer) Reference(r string) (*Reference, error) {
-	return &Reference{Scheme: m.scheme, Path: r}, nil
-}
-
-func (m Multiplexer) Get(r *Reference) (interface{}, error) {
-	c, r2, err := m.find(r)
+func (m Multiplexer) find(r Reference) (StorageCombinator, error) {
+	p := r.URI().Path
+	first, err := firstPathComponent(p)
 	if err != nil {
 		return nil, err
 	}
-	return c.Get(r2)
+	c, ok := m.m[first]
+	if !ok {
+		return nil, fmt.Errorf("unsupported path: %q", p)
+	}
+	return c, nil
 }
 
-func (m Multiplexer) Put(r *Reference, i interface{}) error {
-	c, r2, err := m.find(r)
+func (m Multiplexer) Get(r Reference) (interface{}, error) {
+	c, err := m.find(r)
+	if err != nil {
+		return nil, err
+	}
+	return c.Get(r)
+}
+
+func (m Multiplexer) Put(r Reference, i interface{}) error {
+	c, err := m.find(r)
 	if err != nil {
 		return err
 	}
-	return c.Put(r2, i)
+	return c.Put(r, i)
 }
 
-func (m Multiplexer) Delete(r *Reference) error {
-	c, r2, err := m.find(r)
+func (m Multiplexer) Delete(r Reference) error {
+	c, err := m.find(r)
 	if err != nil {
 		return err
 	}
-	return c.Delete(r2)
+	return c.Delete(r)
 }

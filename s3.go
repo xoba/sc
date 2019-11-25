@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"path"
+	"net/url"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -15,6 +15,19 @@ import (
 type S3KeyValue struct {
 	scheme, bucket, prefix string
 	svc                    *s3.S3
+}
+
+type S3Reference struct {
+	Bucket, Key string
+	Public      bool
+}
+
+func (o S3Reference) URI() url.URL {
+	var u url.URL
+	u.Scheme = "s3"
+	u.Host = o.Bucket
+	u.Path = o.Key
+	return u
 }
 
 func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
@@ -32,36 +45,41 @@ func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
 	}, nil
 }
 
-func (fs S3KeyValue) Reference(p string) (*Reference, error) {
-	return &Reference{Scheme: fs.scheme, Path: p}, nil
-}
-
-func (fs S3KeyValue) key(r *Reference) string {
-	p := path.Join(fs.prefix, path.Clean("/"+r.Path))
+func removeLeadingSlashes(p string) string {
 	for {
 		if strings.HasPrefix(p, "/") {
 			p = p[1:]
-			continue
 		}
 		break
 	}
 	return p
 }
 
-func (fs S3KeyValue) goodRef(r *Reference) error {
-	if r.Scheme != fs.scheme {
-		return fmt.Errorf("bad scheme: %q", r.Scheme)
+func (fs S3KeyValue) s3ref(r Reference) (*S3Reference, error) {
+	switch t := r.(type) {
+	case S3Reference:
+		return &t, nil
+	case *S3Reference:
+		return t, nil
+	default:
+		u := r.URI()
+		var s3ref S3Reference
+		if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
+			s3ref.Bucket = u.Host
+		}
+		s3ref.Key = removeLeadingSlashes(u.Path)
+		return &s3ref, nil
 	}
-	return nil
 }
 
-func (fs S3KeyValue) Get(r *Reference) (interface{}, error) {
-	if err := fs.goodRef(r); err != nil {
+func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
+	s3ref, err := fs.s3ref(r)
+	if err != nil {
 		return nil, err
 	}
 	resp, err := fs.svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(fs.bucket),
-		Key:    aws.String(fs.key(r)),
+		Bucket: aws.String(s3ref.Bucket),
+		Key:    aws.String(s3ref.Key),
 	})
 	if err != nil {
 		return nil, err
@@ -74,10 +92,7 @@ func (fs S3KeyValue) Get(r *Reference) (interface{}, error) {
 	return w.Bytes(), nil
 }
 
-func (fs S3KeyValue) Put(r *Reference, i interface{}) error {
-	if err := fs.goodRef(r); err != nil {
-		return err
-	}
+func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	var rs io.ReadSeeker
 	switch t := i.(type) {
 	case string:
@@ -89,11 +104,16 @@ func (fs S3KeyValue) Put(r *Reference, i interface{}) error {
 		fmt.Fprintf(w, "%v", t)
 		rs = bytes.NewReader(w.Bytes())
 	}
-	_, err := fs.svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(fs.bucket),
-		Key:    aws.String(fs.key(r)),
+	s3ref := fs.s3ref(r)
+	poi := s3.PutObjectInput{
+		Bucket: aws.String(s3ref.Bucket),
+		Key:    aws.String(s3ref.Key),
 		Body:   rs,
-	})
+	}
+	if s3ref.Public {
+		poi.ACL = aws.String("public-read")
+	}
+	_, err := fs.svc.PutObject(&poi)
 	if err != nil {
 		return err
 	}
@@ -101,8 +121,5 @@ func (fs S3KeyValue) Put(r *Reference, i interface{}) error {
 }
 
 func (fs S3KeyValue) Delete(r *Reference) error {
-	if err := fs.goodRef(r); err != nil {
-		return err
-	}
 	return fmt.Errorf("Delete unimplemented")
 }
