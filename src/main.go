@@ -57,7 +57,7 @@ func main() {
 		check(err)
 		store = m
 	}
-	store = sc.NewPassthrough("pass", store)
+	store = sc.NewPassthrough(store)
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 3; i++ {

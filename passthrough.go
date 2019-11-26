@@ -1,15 +1,13 @@
 package sc
 
-func NewPassthrough(scheme string, c StorageCombinator) *Passthrough {
+func NewPassthrough(c StorageCombinator) *Passthrough {
 	return &Passthrough{
-		scheme: scheme,
-		c:      c,
+		c: c,
 	}
 }
 
 type Passthrough struct {
-	scheme string
-	c      StorageCombinator
+	c StorageCombinator
 }
 
 func (pt Passthrough) Get(r Reference) (interface{}, error) {
