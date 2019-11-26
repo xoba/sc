@@ -5,17 +5,16 @@ import (
 	"strings"
 )
 
-// switching storage combinator, based on first path component
-func NewMultiplexer(scheme string, m map[string]StorageCombinator) (*Multiplexer, error) {
+// NewMultiplexer creates a switching storage combinator,
+// based on first path component
+func NewMultiplexer(m map[string]StorageCombinator) (*Multiplexer, error) {
 	return &Multiplexer{
-		scheme: scheme,
-		m:      m,
+		m: m,
 	}, nil
 }
 
 type Multiplexer struct {
-	scheme string
-	m      map[string]StorageCombinator
+	m map[string]StorageCombinator
 }
 
 func firstPathComponent(p string) (string, error) {
@@ -28,8 +27,7 @@ func firstPathComponent(p string) (string, error) {
 	return "", fmt.Errorf("no first path component")
 }
 
-func (m Multiplexer) find(r Reference) (StorageCombinator, error) {
-	p := r.URI().Path
+func (m Multiplexer) find(p string) (StorageCombinator, error) {
 	first, err := firstPathComponent(p)
 	if err != nil {
 		return nil, err
@@ -42,7 +40,7 @@ func (m Multiplexer) find(r Reference) (StorageCombinator, error) {
 }
 
 func (m Multiplexer) Get(r Reference) (interface{}, error) {
-	c, err := m.find(r)
+	c, err := m.find(r.URI().Path)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +48,7 @@ func (m Multiplexer) Get(r Reference) (interface{}, error) {
 }
 
 func (m Multiplexer) Put(r Reference, i interface{}) error {
-	c, err := m.find(r)
+	c, err := m.find(r.URI().Path)
 	if err != nil {
 		return err
 	}
@@ -62,9 +60,17 @@ func (fs Multiplexer) Merge(r Reference, i interface{}) error {
 }
 
 func (m Multiplexer) Delete(r Reference) error {
-	c, err := m.find(r)
+	c, err := m.find(r.URI().Path)
 	if err != nil {
 		return err
 	}
 	return c.Delete(r)
+}
+
+func (m Multiplexer) Find(p string) (Reference, error) {
+	c, err := m.find(p)
+	if err != nil {
+		return nil, err
+	}
+	return c.Find(p)
 }

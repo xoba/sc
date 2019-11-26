@@ -1,11 +1,11 @@
 package sc
 
 import (
-	"fmt"
 	"net/url"
 )
 
 type StorageCombinator interface {
+	Find(string) (Reference, error) // a sort of query or naming facility
 	Get(Reference) (interface{}, error)
 	Put(Reference, interface{}) error
 	Merge(Reference, interface{}) error
@@ -14,8 +14,4 @@ type StorageCombinator interface {
 
 type Reference interface {
 	URI() url.URL
-}
-
-func unimplemented(i interface{}, method string) error {
-	return fmt.Errorf("%T.%s unimplemented", i, method)
 }

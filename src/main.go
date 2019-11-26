@@ -49,7 +49,7 @@ func main() {
 	} else {
 		s3, err := sc.NewS3KeyValue("s3", bucket, "myprefix")
 		check(err)
-		m, err := sc.NewMultiplexer("mult", map[string]sc.StorageCombinator{
+		m, err := sc.NewMultiplexer(map[string]sc.StorageCombinator{
 			"dir0": newFs(),
 			"dir1": s3,
 		})
@@ -77,6 +77,17 @@ func main() {
 	}
 	if err := Traverse(store, "/"); err != nil {
 		fmt.Printf("can't traverse '/'\n")
+	}
+
+	const find = "/dir0/sub/test7.txt"
+	r, err := store.Find(find)
+	if err != nil {
+		fmt.Printf("can't find %q\n", find)
+	} else {
+		fmt.Printf("found %q: %s\n", find, r)
+		o, err := store.Get(r)
+		check(err)
+		fmt.Printf("got: %q\n", show(o))
 	}
 }
 

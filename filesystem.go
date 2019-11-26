@@ -1,6 +1,7 @@
 package sc
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,8 @@ import (
 	"time"
 )
 
+// NewFileSystem creates a new filesystem storage combinator with
+// given scheme, mountpoint, and default file mode
 func NewFileSystem(scheme, mount string, mode os.FileMode) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
 	if err := mkdir(mount, mode); err != nil {
@@ -19,6 +22,7 @@ func NewFileSystem(scheme, mount string, mode os.FileMode) (*FileSystem, error) 
 	return &FileSystem{scheme: scheme, mount: mount, mode: mode}, nil
 }
 
+// FileSystem is a storage combinator based on files
 type FileSystem struct {
 	mode          os.FileMode
 	scheme, mount string
@@ -34,7 +38,11 @@ func mkdir(p string, mode os.FileMode) error {
 }
 
 func (fs FileSystem) path(r Reference) string {
-	return filepath.Join(fs.mount, filepath.Clean("/"+r.URI().Path))
+	return fs.getPath(r.URI().Path)
+}
+
+func (fs FileSystem) getPath(p string) string {
+	return filepath.Join(fs.mount, filepath.Clean("/"+p))
 }
 
 type FileReference struct {
@@ -44,14 +52,28 @@ type FileReference struct {
 	ModTime time.Time
 }
 
+func NewFileReference(fi os.FileInfo) FileReference {
+	return FileReference{
+		Name:    fi.Name(),
+		Size:    int(fi.Size()),
+		ModTime: fi.ModTime(),
+		IsDir:   fi.IsDir(),
+	}
+}
+
 func (f FileReference) URI() url.URL {
 	var u url.URL
 	u.Scheme = "file"
-	u.Path = path.Clean(f.Name)
+	u.Path = path.Clean("/" + f.Name)
 	if f.IsDir {
 		u.Path += "/"
 	}
 	return u
+}
+
+func (f FileReference) String() string {
+	buf, _ := json.Marshal(f)
+	return string(buf)
 }
 
 func (fs FileSystem) Get(r Reference) (interface{}, error) {
@@ -67,12 +89,7 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 		}
 		var files []FileReference
 		for _, fi := range list {
-			files = append(files, FileReference{
-				Name:    fi.Name(),
-				Size:    int(fi.Size()),
-				ModTime: fi.ModTime(),
-				IsDir:   fi.IsDir(),
-			})
+			files = append(files, NewFileReference(fi))
 		}
 		return files, nil
 	}
@@ -96,10 +113,21 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 	return ioutil.WriteFile(p, buf, fs.mode)
 }
 
-func (fs FileSystem) Merge(r Reference, i interface{}) error {
-	return unimplemented(fs, "Merge")
-}
-
 func (fs FileSystem) Delete(r Reference) error {
 	return os.RemoveAll(fs.path(r))
+}
+
+func (fs FileSystem) Find(q string) (Reference, error) {
+	p := fs.getPath(q)
+	fi, err := os.Stat(p)
+	if err != nil {
+		return nil, err
+	}
+	r := NewFileReference(fi)
+	r.Name = path.Clean("/" + q)
+	return r, nil
+}
+
+func (fs FileSystem) Merge(r Reference, i interface{}) error {
+	return unimplemented(fs, "Merge")
 }

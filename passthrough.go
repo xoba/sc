@@ -27,3 +27,7 @@ func (pt Passthrough) Merge(r Reference, i interface{}) error {
 func (pt Passthrough) Delete(r Reference) error {
 	return pt.c.Delete(r)
 }
+
+func (pt Passthrough) Find(p string) (Reference, error) {
+	return pt.c.Find(p)
+}

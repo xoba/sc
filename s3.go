@@ -134,3 +134,7 @@ func (fs S3KeyValue) Merge(r Reference, i interface{}) error {
 func (fs S3KeyValue) Delete(r Reference) error {
 	return unimplemented(fs, "Delete")
 }
+
+func (fs S3KeyValue) Find(string) (Reference, error) {
+	return nil, unimplemented(fs, "Find")
+}
