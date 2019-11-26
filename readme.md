@@ -26,6 +26,17 @@ type Reference struct {
 	Scheme string
 	Path   string
 }
+type StorageCombinator interface {
+	Find(string) (Reference, error) // a sort of query or naming facility
+	Get(Reference) (interface{}, error)
+	Put(Reference, interface{}) error
+	Merge(Reference, interface{}) error
+	Delete(Reference) error
+}
+
+type Reference interface {
+	URI() *url.URL
+}
 ```
 for using the s3 combinator, follow normal configuration conventions for using the aws sdk, such as having 
 `~/.aws/credentials` and `~/.aws/config` files; e.g.:
