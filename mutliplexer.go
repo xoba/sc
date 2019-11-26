@@ -56,7 +56,7 @@ func (m Multiplexer) Put(r Reference, i interface{}) error {
 }
 
 func (m Multiplexer) Merge(r Reference, i interface{}) error {
-	c, err := fs.find(r.URI().Path)
+	c, err := m.find(r.URI().Path)
 	if err != nil {
 		return err
 	}
