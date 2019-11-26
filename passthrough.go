@@ -19,7 +19,7 @@ func (pt Passthrough) Put(r Reference, i interface{}) error {
 }
 
 func (pt Passthrough) Merge(r Reference, i interface{}) error {
-	return unimplemented(pt, "Merge")
+	return pt.c.Merge(r, i)
 }
 
 func (pt Passthrough) Delete(r Reference) error {

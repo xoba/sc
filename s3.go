@@ -55,6 +55,7 @@ func removeLeadingSlashes(p string) string {
 	for {
 		if strings.HasPrefix(p, "/") {
 			p = p[1:]
+			continue
 		}
 		break
 	}
@@ -142,7 +143,17 @@ func (fs S3KeyValue) Merge(r Reference, i interface{}) error {
 }
 
 func (fs S3KeyValue) Delete(r Reference) error {
-	return unimplemented(fs, "Delete")
+	s3ref, err := fs.s3ref(r)
+	if err != nil {
+		return err
+	}
+	if _, err := fs.svc.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(s3ref.Bucket),
+		Key:    aws.String(s3ref.Key),
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (fs S3KeyValue) Find(q string) (Reference, error) {
