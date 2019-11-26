@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/url"
 	"os"
@@ -107,6 +108,17 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 		buf = t
 	case string:
 		buf = []byte(t)
+	case io.ReadCloser:
+		defer t.Close()
+		f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fs.mode)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		if _, err := io.Copy(f, t); err != nil {
+			return err
+		}
+		return nil
 	default:
 		buf = []byte(fmt.Sprintf("%v", t))
 	}
