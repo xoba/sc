@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/url"
 	"os"
 	"path"
 
@@ -19,26 +18,20 @@ func init() {
 	flag.Parse()
 }
 
-type Ref struct {
-	u *url.URL
-}
-
-func (r Ref) String() string {
-	return r.u.String()
-}
-
-func NewRef(p string) Ref {
-	var r Ref
-	r.u = &url.URL{}
-	r.u.Path = p
-	return r
-}
-
-func (r Ref) URI() *url.URL {
-	return r.u
-}
-
 func main() {
+
+	{
+		r := sc.NewRef("test.txt")
+		ac, err := sc.NewAppendingCombinator("merging")
+		check(err)
+		check(ac.Put(r, "first line\n"))
+		for i := 0; i < 10; i++ {
+			check(ac.Merge(r, fmt.Sprintf("howdy %d!\n", i)))
+		}
+		return
+
+	}
+
 	newFs := func() sc.StorageCombinator {
 		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
 		check(err)
@@ -61,7 +54,7 @@ func main() {
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 3; i++ {
-			r := NewRef(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
+			r := sc.NewRef(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
 			fmt.Println(r)
 			check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
 			buf, err := store.Get(r)
@@ -69,7 +62,7 @@ func main() {
 			fmt.Printf("got %q\n", show(buf))
 		}
 	}
-	r2 := NewRef("/dir0")
+	r2 := sc.NewRef("/dir0")
 	listing, err := store.Get(r2)
 	if err == nil {
 		fmt.Print(show(listing))
@@ -119,7 +112,7 @@ func Traverse(store sc.StorageCombinator, p string) error {
 }
 
 func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
-	ref := NewRef(p)
+	ref := sc.NewRef(p)
 	i, err := store.Get(ref)
 	if err != nil {
 		return err
