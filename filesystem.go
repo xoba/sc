@@ -61,14 +61,14 @@ func NewFileReference(fi os.FileInfo) FileReference {
 	}
 }
 
-func (f FileReference) URI() url.URL {
+func (f FileReference) URI() *url.URL {
 	var u url.URL
 	u.Scheme = "file"
 	u.Path = path.Clean("/" + f.Name)
 	if f.IsDir {
 		u.Path += "/"
 	}
-	return u
+	return &u
 }
 
 func (f FileReference) String() string {

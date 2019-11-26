@@ -2,6 +2,7 @@ package sc
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -22,12 +23,17 @@ type S3Reference struct {
 	Public      bool
 }
 
-func (o S3Reference) URI() url.URL {
+func (o S3Reference) URI() *url.URL {
 	var u url.URL
 	u.Scheme = "s3"
 	u.Host = o.Bucket
 	u.Path = o.Key
-	return u
+	return &u
+}
+
+func (o S3Reference) String() string {
+	buf, _ := json.Marshal(o)
+	return string(buf)
 }
 
 func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
@@ -62,16 +68,20 @@ func (fs S3KeyValue) s3ref(r Reference) (*S3Reference, error) {
 	case *S3Reference:
 		return t, nil
 	default:
-		u := r.URI()
-		var s3ref S3Reference
-		if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
-			s3ref.Bucket = u.Host
-		} else {
-			s3ref.Bucket = fs.bucket
-		}
-		s3ref.Key = removeLeadingSlashes(u.Path)
-		return &s3ref, nil
+		return fs.parseS3URI(r.URI())
 	}
+}
+
+func (fs S3KeyValue) parseS3URI(u *url.URL) (*S3Reference, error) {
+	var s3ref S3Reference
+	if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
+		s3ref.Bucket = u.Host
+	} else {
+		s3ref.Bucket = fs.bucket
+	}
+	s3ref.Key = removeLeadingSlashes(u.Path)
+	return &s3ref, nil
+
 }
 
 func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
@@ -103,10 +113,10 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 		rs = bytes.NewReader(t)
 	case fmt.Stringer:
 		rs = strings.NewReader(t.String())
+	case io.ReadSeeker:
+		rs = t
 	default:
-		w := new(bytes.Buffer)
-		fmt.Fprintf(w, "%v", t)
-		rs = bytes.NewReader(w.Bytes())
+		return fmt.Errorf("don't know how to handle object type %T", t)
 	}
 	s3ref, err := fs.s3ref(r)
 	if err != nil {
@@ -135,6 +145,20 @@ func (fs S3KeyValue) Delete(r Reference) error {
 	return unimplemented(fs, "Delete")
 }
 
-func (fs S3KeyValue) Find(string) (Reference, error) {
-	return nil, unimplemented(fs, "Find")
+func (fs S3KeyValue) Find(q string) (Reference, error) {
+	u, err := url.Parse(q)
+	if err != nil {
+		return nil, err
+	}
+	s3ref, err := fs.parseS3URI(u)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := fs.svc.HeadObject(&s3.HeadObjectInput{
+		Bucket: aws.String(s3ref.Bucket),
+		Key:    aws.String(s3ref.Key),
+	}); err != nil {
+		return nil, err
+	}
+	return s3ref, nil
 }

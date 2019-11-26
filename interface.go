@@ -13,5 +13,5 @@ type StorageCombinator interface {
 }
 
 type Reference interface {
-	URI() url.URL
+	URI() *url.URL
 }

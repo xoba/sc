@@ -20,7 +20,7 @@ func init() {
 }
 
 type Ref struct {
-	u url.URL
+	u *url.URL
 }
 
 func (r Ref) String() string {
@@ -29,11 +29,12 @@ func (r Ref) String() string {
 
 func NewRef(p string) Ref {
 	var r Ref
+	r.u = &url.URL{}
 	r.u.Path = p
 	return r
 }
 
-func (r Ref) URI() url.URL {
+func (r Ref) URI() *url.URL {
 	return r.u
 }
 
@@ -59,7 +60,7 @@ func main() {
 	store = sc.NewPassthrough("pass", store)
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
-		for i := 0; i < 10; i++ {
+		for i := 0; i < 3; i++ {
 			r := NewRef(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
 			fmt.Println(r)
 			check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
@@ -79,16 +80,20 @@ func main() {
 		fmt.Printf("can't traverse '/'\n")
 	}
 
-	const find = "/dir0/sub/test7.txt"
-	r, err := store.Find(find)
-	if err != nil {
-		fmt.Printf("can't find %q\n", find)
-	} else {
-		fmt.Printf("found %q: %s\n", find, r)
-		o, err := store.Get(r)
-		check(err)
-		fmt.Printf("got: %q\n", show(o))
+	find := func(q string) {
+		r, err := store.Find(q)
+		if err != nil {
+			fmt.Printf("can't find %q: %v\n", q, err)
+		} else {
+			fmt.Printf("found %q: %s\n", q, r.URI())
+			o, err := store.Get(r)
+			check(err)
+			fmt.Printf("got: %q\n", show(o))
+		}
 	}
+	find("dir0/sub/test0.txt")
+	find("dir1/sub/test1.txt")
+
 }
 
 func show(i interface{}) string {
