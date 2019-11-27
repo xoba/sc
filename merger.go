@@ -1,7 +1,6 @@
 package sc
 
 import (
-	"bytes"
 	"crypto/md5"
 	"fmt"
 	"io/ioutil"
@@ -63,20 +62,22 @@ func (ac AppendingCombinator) Delete(r Reference) error {
 }
 
 func (ac AppendingCombinator) Merge(r Reference, i interface{}) error {
-	f := ac.file(r)
-	w := new(bytes.Buffer)
-	buf, err := ioutil.ReadFile(f)
+	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
 		return err
 	}
-	w.Write(buf)
+	defer f.Close()
+	var buf []byte
 	switch t := i.(type) {
 	case []byte:
-		w.Write(t)
+		buf = t
 	case string:
-		w.WriteString(t)
+		buf = []byte(t)
 	default:
 		return fmt.Errorf("unsupported type: %T", t)
 	}
-	return ioutil.WriteFile(f, w.Bytes(), os.ModePerm)
+	if _, err := f.Write(buf); err != nil {
+		return err
+	}
+	return nil
 }
