@@ -20,20 +20,6 @@ func init() {
 
 func main() {
 
-	if false {
-		r := sc.NewRef("test.txt")
-		const dir = "merging"
-		os.MkdirAll(dir, os.ModePerm)
-		ac, err := sc.NewAppendingCombinator(dir, 0644)
-		check(err)
-		check(ac.Put(r, "first line\n"))
-		for i := 0; i < 10; i++ {
-			check(ac.Merge(r, fmt.Sprintf("howdy %d!\n", i)))
-		}
-		return
-
-	}
-
 	newFs := func() sc.StorageCombinator {
 		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
 		check(err)

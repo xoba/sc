@@ -15,3 +15,8 @@ type StorageCombinator interface {
 type Reference interface {
 	URI() *url.URL
 }
+
+// for parsers to be able to create combinators at runtime
+type CombinatorFactory interface {
+	New(args ...string) (StorageCombinator, error)
+}

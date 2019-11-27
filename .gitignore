@@ -3,3 +3,4 @@ bin
 diskstore
 pkg
 merging
+*.test
