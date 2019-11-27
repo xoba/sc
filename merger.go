@@ -10,15 +10,17 @@ import (
 
 // will simply append data upon Merge call
 type AppendingCombinator struct {
-	dir string
+	dir  string
+	mode os.FileMode
 }
 
-func NewAppendingCombinator(dir string) (*AppendingCombinator, error) {
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+func NewAppendingCombinator(dir string, mode os.FileMode) (*AppendingCombinator, error) {
+	if _, err := os.Stat(dir); err != nil {
 		return nil, err
 	}
 	return &AppendingCombinator{
-		dir: dir,
+		dir:  dir,
+		mode: mode,
 	}, nil
 }
 
@@ -29,9 +31,7 @@ func hash(s string) string {
 }
 
 func (ac AppendingCombinator) file(r Reference) string {
-	f := filepath.Join(ac.dir, hash(r.URI().Path))
-	fmt.Println(f)
-	return f
+	return filepath.Join(ac.dir, hash(r.URI().Path))
 }
 
 func (ac AppendingCombinator) Find(p string) (Reference, error) {
@@ -54,7 +54,7 @@ func (ac AppendingCombinator) Put(r Reference, i interface{}) error {
 	default:
 		return fmt.Errorf("unsupported type: %T", t)
 	}
-	return ioutil.WriteFile(ac.file(r), buf, os.ModePerm)
+	return ioutil.WriteFile(ac.file(r), buf, ac.mode)
 }
 
 func (ac AppendingCombinator) Delete(r Reference) error {
@@ -62,7 +62,7 @@ func (ac AppendingCombinator) Delete(r Reference) error {
 }
 
 func (ac AppendingCombinator) Merge(r Reference, i interface{}) error {
-	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
+	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, ac.mode)
 	if err != nil {
 		return err
 	}

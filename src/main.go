@@ -20,9 +20,11 @@ func init() {
 
 func main() {
 
-	{
+	if false {
 		r := sc.NewRef("test.txt")
-		ac, err := sc.NewAppendingCombinator("merging")
+		const dir = "merging"
+		os.MkdirAll(dir, os.ModePerm)
+		ac, err := sc.NewAppendingCombinator(dir, 0644)
 		check(err)
 		check(ac.Put(r, "first line\n"))
 		for i := 0; i < 10; i++ {
@@ -50,7 +52,20 @@ func main() {
 		check(err)
 		store = m
 	}
+
 	store = sc.NewPassthrough(store)
+
+	const listPath = "/list"
+	{
+		const dir = "diskstore/merging"
+		os.MkdirAll(dir, os.ModePerm)
+		ac, err := sc.NewAppendingCombinator(dir, 0644)
+		check(err)
+		lister, err := sc.NewListingCombinator(store, ac, listPath)
+		check(err)
+		store = lister
+	}
+
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 3; i++ {
@@ -87,6 +102,11 @@ func main() {
 	find("dir0/sub/test0.txt")
 	find("dir1/sub/test1.txt")
 
+	list, err := store.Find(listPath)
+	check(err)
+	x, err := store.Get(list)
+	check(err)
+	fmt.Println(show(x))
 }
 
 func show(i interface{}) string {

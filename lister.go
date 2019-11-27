@@ -1,39 +1,34 @@
 package sc
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/url"
+	"time"
 )
 
 type ListingCombinator struct {
 	raw, list     StorageCombinator
-	dir           string
 	listReference Reference
+	listPath      string
 }
 
-func NewListingCombinator(raw StorageCombinator, listingDir string) (*ListingCombinator, error) {
-	list, err := NewAppendingCombinator(listingDir)
+func NewListingCombinator(raw, list StorageCombinator, listPath string) (*ListingCombinator, error) {
+	r, err := list.Find(listPath)
 	if err != nil {
-		return nil, err
-	}
-	r, err := list.Find("listing.txt")
-	if err != nil {
-		return nil, err
-	}
-	if err := list.Put(r, ""); err != nil {
 		return nil, err
 	}
 	return &ListingCombinator{
 		raw:           raw,
 		list:          list,
 		listReference: r,
-		dir:           listingDir,
+		listPath:      listPath,
 	}, nil
 }
 
 func (lc ListingCombinator) Find(p string) (Reference, error) {
-	if p == "/"+lc.dir {
-
+	if p == lc.listPath {
+		return lc.listReference, nil
 	}
 	return lc.raw.Find(p)
 }
@@ -46,20 +41,25 @@ func (lc ListingCombinator) Get(r Reference) (interface{}, error) {
 }
 
 type ListRecord struct {
+	Time   time.Time
 	URI    *url.URL
 	Delete bool `json:",omitempty"`
 }
 
 func (lc ListingCombinator) update(r Reference, delete bool) error {
 	lr := ListRecord{
+		Time:   time.Now(),
 		URI:    r.URI(),
 		Delete: delete,
 	}
-	buf, err := json.Marshal(lr)
-	if err != nil {
+	w := new(bytes.Buffer)
+	e := json.NewEncoder(w)
+	e.SetEscapeHTML(false)
+	e.SetIndent("", "  ")
+	if err := e.Encode(lr); err != nil {
 		return err
 	}
-	return lc.list.Put(lc.listReference, buf)
+	return lc.list.Merge(lc.listReference, w.Bytes())
 }
 
 func (lc ListingCombinator) Put(r Reference, i interface{}) error {
