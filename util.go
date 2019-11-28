@@ -21,6 +21,12 @@ func NewRef(p string) Ref {
 	return r
 }
 
+func NewURI(u *url.URL) Ref {
+	return Ref{
+		u: u,
+	}
+}
+
 func (r Ref) URI() *url.URL {
 	return r.u
 }

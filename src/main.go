@@ -6,9 +6,9 @@ import (
 	"flag"
 	"fmt"
 	"math"
+	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 
 	"github.com/xoba/sc"
 )
@@ -65,18 +65,22 @@ func main() {
 	// create either a pure disk filesystem or file+s3 multiplexed:
 	{
 		fs := newFilesystem(workingDir)
+		calculator := sc.NewProgrammatic(func(r sc.Reference) (interface{}, error) {
+			u := r.URI()
+			if q := u.Query(); len(q) > 0 {
+				return fmt.Sprintf("got sql query %q", q.Get("sql")), nil
+			}
+			var count int
+			for range u.String() {
+				count++
+			}
+			return fmt.Sprintf("%q has %d chars", u, count), nil
+		})
 		m := map[string]sc.StorageCombinator{
 			"":     fs,
 			"/":    fs,
 			"dir0": fs,
-			"calc": sc.NewProgrammatic(func(r sc.Reference) (interface{}, error) {
-				u := r.URI().String()
-				var count int
-				for range u {
-					count++
-				}
-				return fmt.Sprintf("%q has %d chars", u, count), nil
-			}),
+			"calc": calculator,
 		}
 		if bucket == "" {
 			m["dir1"] = fs
@@ -86,16 +90,26 @@ func main() {
 		store = newMultiplexer(m)
 	}
 
+	// add listing capability:
+	store = newLister(store, newAppender("merging"), listPath)
+
 	// a passthrough for fun:
 	store = sc.NewPassthrough(store)
-
-	// add listing capability:
-	store = newLister(store, newAppender(filepath.Join(workingDir, "merging")), listPath)
 
 	// test out the calculator:
 	for i := 0; i < 3; i++ {
 		r := sc.NewRef(fmt.Sprintf("/calc/%f", math.Pow(10, float64(i))))
 		i, err := store.Get(r)
+		check(err)
+		fmt.Println(show(i))
+	}
+
+	// play with a sql query concept:
+	{
+		fmt.Printf("gonna try a sql query\n")
+		u, err := url.Parse("/calc?sql=select * from mytable")
+		check(err)
+		i, err := store.Get(sc.NewURI(u))
 		check(err)
 		fmt.Println(show(i))
 	}
