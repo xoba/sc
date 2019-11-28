@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"math"
 	"net/url"
 	"os"
@@ -33,7 +34,7 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	check(err)
-	c, err := sc.NewS3KeyValue(bucket, prefix, false, s3.New(p))
+	c, err := sc.NewS3KeyValue(bucket, prefix, true, s3.New(p))
 	check(err)
 	return c
 }
@@ -182,6 +183,13 @@ func show(i interface{}) string {
 		return string(t)
 	case string:
 		return t
+	case io.ReadCloser:
+		defer t.Close()
+		w := new(bytes.Buffer)
+		if _, err := io.Copy(w, t); err != nil {
+			check(err)
+		}
+		return w.String()
 	case []sc.FileReference:
 		w := new(bytes.Buffer)
 		e := json.NewEncoder(w)
