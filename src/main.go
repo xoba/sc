@@ -82,9 +82,7 @@ func main() {
 			"dir0": fs,
 			"calc": calculator,
 		}
-		if bucket == "" {
-			m["dir1"] = fs
-		} else {
+		if bucket != "" {
 			m["dir1"] = newS3(bucket, prefix)
 		}
 		store = newMultiplexer(m)

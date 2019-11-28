@@ -6,7 +6,7 @@ import (
 )
 
 // NewMultiplexer creates a switching storage combinator,
-// based on first path component
+// based on longest match to first path component
 func NewMultiplexer(m map[string]StorageCombinator) (*Multiplexer, error) {
 	return &Multiplexer{
 		m: m,
@@ -28,7 +28,18 @@ func firstPathComponent(p string) string {
 }
 
 func (m Multiplexer) find(p string) (StorageCombinator, error) {
-	c, ok := m.m[firstPathComponent(p)]
+	first := firstPathComponent(p)
+	var best string
+	for k := range m.m {
+		if !strings.HasPrefix(first, k) {
+			continue
+		}
+		if len(k) > len(best) {
+			best = k
+		}
+	}
+	fmt.Printf("best match for %q: %q\n", p, best)
+	c, ok := m.m[best]
 	if !ok {
 		return nil, fmt.Errorf("unsupported path: %q", p)
 	}
