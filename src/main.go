@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/xoba/sc"
 )
@@ -14,43 +15,65 @@ import (
 var bucket string
 
 func init() {
-	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip")
+	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip s3 altogether if blank")
 	flag.Parse()
+}
+
+func newFilesystem(mount string) sc.StorageCombinator {
+	fs, err := sc.NewFileSystem("", mount, os.ModePerm)
+	check(err)
+	return fs
+}
+
+func newS3(bucket, prefix string) sc.StorageCombinator {
+	fs, err := sc.NewS3KeyValue("", bucket, prefix)
+	check(err)
+	return fs
+}
+
+func newAppender(dir string) sc.StorageCombinator {
+	os.MkdirAll(dir, os.ModePerm)
+	ac, err := sc.NewAppendingCombinator(dir, 0644)
+	check(err)
+	return ac
+}
+
+func newMultiplexer(m map[string]sc.StorageCombinator) sc.StorageCombinator {
+	x, err := sc.NewMultiplexer(m)
+	check(err)
+	return x
+}
+
+func newLister(path string, appender, raw sc.StorageCombinator) sc.StorageCombinator {
+	lister, err := sc.NewListingCombinator(raw, appender, path)
+	check(err)
+	return lister
 }
 
 func main() {
 
-	newFs := func() sc.StorageCombinator {
-		fs, err := sc.NewFileSystem("file", "diskstore", os.ModePerm)
-		check(err)
-		return fs
-	}
+	const (
+		workingDir = "diskstore"
+		listPath   = "/list"
+		prefix     = "myprefix"
+	)
+
 	var store sc.StorageCombinator
-	if bucket == "" {
-		store = newFs()
-	} else {
-		s3, err := sc.NewS3KeyValue("s3", bucket, "myprefix")
-		check(err)
-		m, err := sc.NewMultiplexer(map[string]sc.StorageCombinator{
-			"dir0": newFs(),
-			"dir1": s3,
-		})
-		check(err)
-		store = m
+	{
+		fs := newFilesystem(workingDir)
+		if bucket == "" {
+			store = fs
+		} else {
+			store = newMultiplexer(map[string]sc.StorageCombinator{
+				"dir0": fs,
+				"dir1": newS3(bucket, prefix),
+			})
+		}
 	}
 
 	store = sc.NewPassthrough(store)
 
-	const listPath = "/list"
-	{
-		const dir = "diskstore/merging"
-		os.MkdirAll(dir, os.ModePerm)
-		ac, err := sc.NewAppendingCombinator(dir, 0644)
-		check(err)
-		lister, err := sc.NewListingCombinator(store, ac, listPath)
-		check(err)
-		store = lister
-	}
+	store = newLister(listPath, newAppender(filepath.Join(workingDir, "merging")), store)
 
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
@@ -63,13 +86,17 @@ func main() {
 			fmt.Printf("got %q\n", show(buf))
 		}
 	}
-	r2 := sc.NewRef("/dir0")
-	listing, err := store.Get(r2)
-	if err == nil {
-		fmt.Print(show(listing))
-	} else {
-		fmt.Printf("can't get %s\n", r2)
+
+	{
+		r := sc.NewRef("/dir0")
+		listing, err := store.Get(r)
+		if err == nil {
+			fmt.Print(show(listing))
+		} else {
+			fmt.Printf("can't get listing %s\n", r)
+		}
 	}
+
 	if err := Traverse(store, "/"); err != nil {
 		fmt.Printf("can't traverse '/'\n")
 	}
@@ -85,14 +112,17 @@ func main() {
 			fmt.Printf("got: %q\n", show(o))
 		}
 	}
+
 	find("dir0/sub/test0.txt")
 	find("dir1/sub/test1.txt")
 
-	list, err := store.Find(listPath)
-	check(err)
-	x, err := store.Get(list)
-	check(err)
-	fmt.Println(show(x))
+	{
+		list, err := store.Find(listPath)
+		check(err)
+		x, err := store.Get(list)
+		check(err)
+		fmt.Println(show(x))
+	}
 }
 
 func show(i interface{}) string {

@@ -37,6 +37,12 @@ func (o S3Reference) String() string {
 }
 
 func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
+	if scheme == "" {
+		scheme = "s3"
+	}
+	if bucket == "" {
+		return nil, fmt.Errorf("needs bucket")
+	}
 	p, err := session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	})

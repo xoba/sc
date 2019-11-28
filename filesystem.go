@@ -17,8 +17,14 @@ import (
 // given scheme, mountpoint, and default file mode
 func NewFileSystem(scheme, mount string, mode os.FileMode) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
+	if mount == "" {
+		return nil, fmt.Errorf("needs a mount point")
+	}
 	if err := mkdir(mount, mode); err != nil {
 		return nil, err
+	}
+	if scheme == "" {
+		scheme = "file"
 	}
 	return &FileSystem{scheme: scheme, mount: mount, mode: mode}, nil
 }

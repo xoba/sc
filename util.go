@@ -5,10 +5,7 @@ import (
 	"net/url"
 )
 
-func unimplemented(i interface{}, method string) error {
-	return fmt.Errorf("%T.%s unimplemented", i, method)
-}
-
+// a simple reference type
 type Ref struct {
 	u *url.URL
 }
@@ -26,4 +23,8 @@ func NewRef(p string) Ref {
 
 func (r Ref) URI() *url.URL {
 	return r.u
+}
+
+func unimplemented(i interface{}, method string) error {
+	return fmt.Errorf("%T.%s unimplemented", i, method)
 }

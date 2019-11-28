@@ -61,6 +61,7 @@ func (ac AppendingCombinator) Delete(r Reference) error {
 	return os.RemoveAll(ac.file(r))
 }
 
+// simple appends or creates
 func (ac AppendingCombinator) Merge(r Reference, i interface{}) error {
 	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, ac.mode)
 	if err != nil {

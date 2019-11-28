@@ -3,26 +3,27 @@ package sc
 import (
 	"bytes"
 	"encoding/json"
-	"net/url"
 	"time"
 )
 
 type ListingCombinator struct {
-	raw, list     StorageCombinator
-	listReference Reference
-	listPath      string
+	raw           StorageCombinator // underlying combinator
+	appender      StorageCombinator // managing the listing
+	listPath      string            // path the list can be found under
+	listReference Reference         // reference to listPath
 }
 
-func NewListingCombinator(raw, list StorageCombinator, listPath string) (*ListingCombinator, error) {
-	r, err := list.Find(listPath)
+// appender's merge method just appends to growing file
+func NewListingCombinator(raw, appender StorageCombinator, listPath string) (*ListingCombinator, error) {
+	r, err := appender.Find(listPath)
 	if err != nil {
 		return nil, err
 	}
 	return &ListingCombinator{
 		raw:           raw,
-		list:          list,
-		listReference: r,
+		appender:      appender,
 		listPath:      listPath,
+		listReference: r,
 	}, nil
 }
 
@@ -35,49 +36,48 @@ func (lc ListingCombinator) Find(p string) (Reference, error) {
 
 func (lc ListingCombinator) Get(r Reference) (interface{}, error) {
 	if r.URI() == lc.listReference.URI() {
-		return lc.list.Get(r)
+		return lc.appender.Get(r)
 	}
 	return lc.raw.Get(r)
 }
 
 type ListRecord struct {
-	Time   time.Time
-	URI    *url.URL
-	Delete bool `json:",omitempty"`
+	Time time.Time
+	URI  string
+	Mode string
 }
 
-func (lc ListingCombinator) update(r Reference, delete bool) error {
+func (lc ListingCombinator) update(r Reference, mode string) error {
 	lr := ListRecord{
-		Time:   time.Now(),
-		URI:    r.URI(),
-		Delete: delete,
+		Time: time.Now(),
+		URI:  r.URI().String(),
+		Mode: mode,
 	}
 	w := new(bytes.Buffer)
 	e := json.NewEncoder(w)
 	e.SetEscapeHTML(false)
-	e.SetIndent("", "  ")
 	if err := e.Encode(lr); err != nil {
 		return err
 	}
-	return lc.list.Merge(lc.listReference, w.Bytes())
+	return lc.appender.Merge(lc.listReference, w.Bytes())
 }
 
 func (lc ListingCombinator) Put(r Reference, i interface{}) error {
-	if err := lc.update(r, false); err != nil {
+	if err := lc.update(r, "put"); err != nil {
 		return err
 	}
 	return lc.raw.Put(r, i)
 }
 
 func (lc ListingCombinator) Delete(r Reference) error {
-	if err := lc.update(r, true); err != nil {
+	if err := lc.update(r, "delete"); err != nil {
 		return err
 	}
 	return lc.raw.Delete(r)
 }
 
 func (lc ListingCombinator) Merge(r Reference, i interface{}) error {
-	if err := lc.update(r, false); err != nil {
+	if err := lc.update(r, "merge"); err != nil {
 		return err
 	}
 	return lc.raw.Merge(r, i)
