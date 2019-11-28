@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -133,6 +135,9 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 		Bucket: aws.String(s3ref.Bucket),
 		Key:    aws.String(s3ref.Key),
 		Body:   rs,
+	}
+	if mt := mime.TypeByExtension(path.Ext(s3ref.Key)); mt != "" {
+		poi.ContentType = aws.String(mt)
 	}
 	if s3ref.Public {
 		poi.ACL = aws.String("public-read")
