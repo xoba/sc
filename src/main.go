@@ -10,6 +10,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/xoba/sc"
 )
 
@@ -27,7 +29,11 @@ func newFilesystem(mount string) sc.StorageCombinator {
 }
 
 func newS3(bucket, prefix string) sc.StorageCombinator {
-	c, err := sc.NewS3KeyValue("", bucket, prefix)
+	p, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	check(err)
+	c, err := sc.NewS3KeyValue(bucket, prefix, s3.New(p))
 	check(err)
 	return c
 }

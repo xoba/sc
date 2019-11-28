@@ -11,13 +11,12 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 type S3KeyValue struct {
-	scheme, bucket, prefix string
-	svc                    *s3.S3
+	bucket, prefix string
+	svc            *s3.S3
 }
 
 type S3Reference struct {
@@ -38,24 +37,14 @@ func (o S3Reference) String() string {
 	return string(buf)
 }
 
-func NewS3KeyValue(scheme, bucket, prefix string) (*S3KeyValue, error) {
-	if scheme == "" {
-		scheme = "s3"
-	}
+func NewS3KeyValue(bucket, prefix string, svc *s3.S3) (*S3KeyValue, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
 	}
-	p, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return nil, err
-	}
 	return &S3KeyValue{
-		scheme: scheme,
 		bucket: bucket,
 		prefix: prefix,
-		svc:    s3.New(p),
+		svc:    svc,
 	}, nil
 }
 
