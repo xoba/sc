@@ -38,7 +38,6 @@ func (m Multiplexer) find(p string) (StorageCombinator, error) {
 			best = k
 		}
 	}
-	fmt.Printf("best match for %q: %q\n", p, best)
 	c, ok := m.m[best]
 	if !ok {
 		return nil, fmt.Errorf("unsupported path: %q", p)
