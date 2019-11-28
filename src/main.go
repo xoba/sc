@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -64,14 +65,25 @@ func main() {
 	// create either a pure disk filesystem or file+s3 multiplexed:
 	{
 		fs := newFilesystem(workingDir)
-		if bucket == "" {
-			store = fs
-		} else {
-			store = newMultiplexer(map[string]sc.StorageCombinator{
-				"dir0": fs,
-				"dir1": newS3(bucket, prefix),
-			})
+		m := map[string]sc.StorageCombinator{
+			"":     fs,
+			"/":    fs,
+			"dir0": fs,
+			"calc": sc.NewProgrammatic(func(r sc.Reference) (interface{}, error) {
+				u := r.URI().String()
+				var count int
+				for range u {
+					count++
+				}
+				return fmt.Sprintf("%q has %d chars", u, count), nil
+			}),
 		}
+		if bucket == "" {
+			m["dir1"] = fs
+		} else {
+			m["dir1"] = newS3(bucket, prefix)
+		}
+		store = newMultiplexer(m)
 	}
 
 	// a passthrough for fun:
@@ -79,6 +91,14 @@ func main() {
 
 	// add listing capability:
 	store = newLister(store, newAppender(filepath.Join(workingDir, "merging")), listPath)
+
+	// test out the calculator:
+	for i := 0; i < 3; i++ {
+		r := sc.NewRef(fmt.Sprintf("/calc/%f", math.Pow(10, float64(i))))
+		i, err := store.Get(r)
+		check(err)
+		fmt.Println(show(i))
+	}
 
 	// put a bunch of stuff at various paths, and see if we can retrieve it
 	for j := 0; j < 2; j++ {
@@ -104,11 +124,11 @@ func main() {
 		}
 	}
 
-	// see if we can traverse disk filesystem
-	if bucket == "" {
-		if err := Traverse(store, "/"); err != nil {
-			fmt.Printf("can't traverse '/'\n")
-		}
+	// see if we can traverse disk part of filesystem
+	const root = "/"
+	fmt.Printf("traversing %q as best we can\n", root)
+	if err := Traverse(store, root); err != nil {
+		fmt.Printf("can't traverse %q': %v\n", root, err)
 	}
 
 	// a function to find stuff with our combinator and show it
@@ -124,8 +144,8 @@ func main() {
 		}
 	}
 
-	find("dir0/sub/test0.txt")
-	find("dir1/sub/test1.txt")
+	find("/dir0/sub/test_0_0.txt")
+	find("/dir1/sub/test_1_1.txt")
 
 	// use the lister functionality to get a list of what we mutated
 	{
@@ -160,7 +180,7 @@ func Traverse(store sc.StorageCombinator, p string) error {
 	return TraverseIndent(store, p, 0)
 }
 
-// if what we get from a combinator is a directory, list and traverse it
+// if what we get from a combinator is a directory, like from file system, list and traverse it
 func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
 	ref := sc.NewRef(p)
 	i, err := store.Get(ref)

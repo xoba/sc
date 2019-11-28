@@ -17,22 +17,18 @@ type Multiplexer struct {
 	m map[string]StorageCombinator
 }
 
-func firstPathComponent(p string) (string, error) {
+func firstPathComponent(p string) string {
 	for _, p := range strings.Split(p, "/") {
 		if len(p) == 0 {
 			continue
 		}
-		return p, nil
+		return p
 	}
-	return "", fmt.Errorf("no first path component")
+	return ""
 }
 
 func (m Multiplexer) find(p string) (StorageCombinator, error) {
-	first, err := firstPathComponent(p)
-	if err != nil {
-		return nil, err
-	}
-	c, ok := m.m[first]
+	c, ok := m.m[firstPathComponent(p)]
 	if !ok {
 		return nil, fmt.Errorf("unsupported path: %q", p)
 	}
