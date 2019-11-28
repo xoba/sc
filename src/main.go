@@ -20,34 +20,34 @@ func init() {
 }
 
 func newFilesystem(mount string) sc.StorageCombinator {
-	fs, err := sc.NewFileSystem("", mount, os.ModePerm)
+	c, err := sc.NewFileSystem("", mount, os.ModePerm)
 	check(err)
-	return fs
+	return c
 }
 
 func newS3(bucket, prefix string) sc.StorageCombinator {
-	fs, err := sc.NewS3KeyValue("", bucket, prefix)
+	c, err := sc.NewS3KeyValue("", bucket, prefix)
 	check(err)
-	return fs
+	return c
 }
 
 func newAppender(dir string) sc.StorageCombinator {
-	os.MkdirAll(dir, os.ModePerm)
-	ac, err := sc.NewAppendingCombinator(dir, 0644)
+	check(os.MkdirAll(dir, os.ModePerm))
+	c, err := sc.NewAppendingCombinator(dir, 0644)
 	check(err)
-	return ac
+	return c
 }
 
 func newMultiplexer(m map[string]sc.StorageCombinator) sc.StorageCombinator {
-	x, err := sc.NewMultiplexer(m)
+	c, err := sc.NewMultiplexer(m)
 	check(err)
-	return x
+	return c
 }
 
-func newLister(path string, appender, raw sc.StorageCombinator) sc.StorageCombinator {
-	lister, err := sc.NewListingCombinator(raw, appender, path)
+func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombinator {
+	c, err := sc.NewListingCombinator(raw, appender, path)
 	check(err)
-	return lister
+	return c
 }
 
 func main() {
@@ -58,7 +58,10 @@ func main() {
 		prefix     = "myprefix"
 	)
 
+	// our top-level storage combinator, which will be assembled from parts:
 	var store sc.StorageCombinator
+
+	// create either a pure disk filesystem or file+s3 multiplexed:
 	{
 		fs := newFilesystem(workingDir)
 		if bucket == "" {
@@ -71,36 +74,44 @@ func main() {
 		}
 	}
 
+	// a passthrough for fun:
 	store = sc.NewPassthrough(store)
 
-	store = newLister(listPath, newAppender(filepath.Join(workingDir, "merging")), store)
+	// add listing capability:
+	store = newLister(store, newAppender(filepath.Join(workingDir, "merging")), listPath)
 
+	// put a bunch of stuff at various paths, and see if we can retrieve it
 	for j := 0; j < 2; j++ {
 		dir := fmt.Sprintf("/dir%d/sub", j)
 		for i := 0; i < 3; i++ {
-			r := sc.NewRef(path.Join(dir, fmt.Sprintf("test%d.txt", i)))
+			r := sc.NewRef(path.Join(dir, fmt.Sprintf("test_%d_%d.txt", i, j)))
 			fmt.Println(r)
-			check(store.Put(r, fmt.Sprintf("howdy %d!", i)))
+			check(store.Put(r, fmt.Sprintf("howdy %d/%d!", i, j)))
 			buf, err := store.Get(r)
 			check(err)
 			fmt.Printf("got %q\n", show(buf))
 		}
 	}
 
+	// see if we can get a directory from filesystem combinator:
 	{
 		r := sc.NewRef("/dir0")
 		listing, err := store.Get(r)
 		if err == nil {
 			fmt.Print(show(listing))
 		} else {
-			fmt.Printf("can't get listing %s\n", r)
+			fmt.Printf("can't get directory %s\n", r)
 		}
 	}
 
-	if err := Traverse(store, "/"); err != nil {
-		fmt.Printf("can't traverse '/'\n")
+	// see if we can traverse disk filesystem
+	if bucket == "" {
+		if err := Traverse(store, "/"); err != nil {
+			fmt.Printf("can't traverse '/'\n")
+		}
 	}
 
+	// a function to find stuff with our combinator and show it
 	find := func(q string) {
 		r, err := store.Find(q)
 		if err != nil {
@@ -116,6 +127,7 @@ func main() {
 	find("dir0/sub/test0.txt")
 	find("dir1/sub/test1.txt")
 
+	// use the lister functionality to get a list of what we mutated
 	{
 		list, err := store.Find(listPath)
 		check(err)
@@ -125,6 +137,7 @@ func main() {
 	}
 }
 
+// interprets and shows something we get from a storage combinator
 func show(i interface{}) string {
 	switch t := i.(type) {
 	case []byte:
@@ -147,6 +160,7 @@ func Traverse(store sc.StorageCombinator, p string) error {
 	return TraverseIndent(store, p, 0)
 }
 
+// if what we get from a combinator is a directory, list and traverse it
 func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
 	ref := sc.NewRef(p)
 	i, err := store.Get(ref)
@@ -158,7 +172,7 @@ func TraverseIndent(store sc.StorageCombinator, p string, indent int) error {
 		prefix += "  "
 	}
 	switch t := i.(type) {
-	case []sc.FileReference:
+	case sc.Directory:
 		for _, x := range t {
 			fmt.Printf("%s%s (%d)\n", prefix, x.Name, x.Size)
 			if x.IsDir {

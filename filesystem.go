@@ -59,6 +59,8 @@ type FileReference struct {
 	ModTime time.Time
 }
 
+type Directory []FileReference
+
 func NewFileReference(fi os.FileInfo) FileReference {
 	return FileReference{
 		Name:    fi.Name(),
@@ -94,7 +96,7 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		var files []FileReference
+		var files Directory
 		for _, fi := range list {
 			files = append(files, NewFileReference(fi))
 		}
