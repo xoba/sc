@@ -33,7 +33,7 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 		SharedConfigState: session.SharedConfigEnable,
 	})
 	check(err)
-	c, err := sc.NewS3KeyValue(bucket, prefix, s3.New(p))
+	c, err := sc.NewS3KeyValue(bucket, prefix, false, s3.New(p))
 	check(err)
 	return c
 }

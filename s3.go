@@ -15,8 +15,9 @@ import (
 )
 
 type S3KeyValue struct {
-	bucket, prefix string
-	svc            *s3.S3
+	bucket, prefix   string
+	returnReadCloser bool
+	svc              *s3.S3
 }
 
 type S3Reference struct {
@@ -37,14 +38,15 @@ func (o S3Reference) String() string {
 	return string(buf)
 }
 
-func NewS3KeyValue(bucket, prefix string, svc *s3.S3) (*S3KeyValue, error) {
+func NewS3KeyValue(bucket, prefix string, returnReadCloser bool, svc *s3.S3) (*S3KeyValue, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
 	}
 	return &S3KeyValue{
-		bucket: bucket,
-		prefix: prefix,
-		svc:    svc,
+		bucket:           bucket,
+		prefix:           prefix,
+		returnReadCloser: returnReadCloser,
+		svc:              svc,
 	}, nil
 }
 
@@ -93,6 +95,9 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if fs.returnReadCloser {
+		return resp.Body, nil
 	}
 	defer resp.Body.Close()
 	w := new(bytes.Buffer)
