@@ -32,6 +32,16 @@ func NewURI(u *url.URL) Ref {
 	}
 }
 
+func ParseRef(p string) (*Ref, error) {
+	u, err := url.Parse(p)
+	if err != nil {
+		return nil, err
+	}
+	return &Ref{
+		u: u,
+	}, nil
+}
+
 func (r Ref) URI() *url.URL {
 	return r.u
 }

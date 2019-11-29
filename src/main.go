@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -70,6 +71,22 @@ func main() {
 
 	// our top-level storage combinator, which will be assembled from parts:
 	var store sc.StorageCombinator
+
+	{
+		store = sc.NewVersioning(newFilesystem(workingDir))
+		store = sc.NewPassthrough("v", store)
+		r := sc.NewRef("test.txt")
+		check(store.Put(r, fmt.Sprintf("howdy at %v!", time.Now())))
+		i, err := store.Get(r)
+		check(err)
+		fmt.Printf("got %s\n", show(i))
+		u, err := sc.ParseRef("test.txt#versions")
+		check(err)
+		list, err := store.Get(u)
+		check(err)
+		fmt.Printf("list: %s\n", show(list))
+		return
+	}
 
 	// create either a pure disk filesystem or file+s3 multiplexed:
 	{
@@ -199,6 +216,13 @@ func show(i interface{}) string {
 		e := json.NewEncoder(w)
 		for _, x := range t {
 			check(e.Encode(x))
+		}
+		return w.String()
+	case sc.Versions:
+		w := new(bytes.Buffer)
+		e := json.NewEncoder(w)
+		for _, v := range t {
+			check(e.Encode(v))
 		}
 		return w.String()
 	default:
