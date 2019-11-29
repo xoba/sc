@@ -94,7 +94,7 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 		Key:    aws.String(s3ref.Key),
 	})
 	if err != nil {
-		return nil, err
+		return nil, wrapNotFound(r, err)
 	}
 	if fs.returnReadCloser {
 		return resp.Body, nil

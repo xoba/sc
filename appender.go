@@ -41,7 +41,11 @@ func (ac AppendingCombinator) Find(p string) (Reference, error) {
 }
 
 func (ac AppendingCombinator) Get(r Reference) (interface{}, error) {
-	return ioutil.ReadFile(ac.file(r))
+	buf, err := ioutil.ReadFile(ac.file(r))
+	if err != nil {
+		return nil, wrapNotFound(r, err)
+	}
+	return buf, nil
 }
 
 func (ac AppendingCombinator) Put(r Reference, i interface{}) error {

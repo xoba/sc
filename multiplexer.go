@@ -40,7 +40,7 @@ func (m Multiplexer) find(p string) (StorageCombinator, error) {
 	}
 	c, ok := m.m[best]
 	if !ok {
-		return nil, fmt.Errorf("unsupported path: %q", p)
+		return nil, fmt.Errorf("unsupported path: %q (%w)", p, NotFound)
 	}
 	return c, nil
 }

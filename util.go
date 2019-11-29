@@ -1,8 +1,13 @@
 package sc
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
+	"os"
+
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/s3"
 )
 
 // a simple reference type
@@ -33,4 +38,21 @@ func (r Ref) URI() *url.URL {
 
 func unimplemented(i interface{}, method string) error {
 	return fmt.Errorf("%T.%s unimplemented", i, method)
+}
+
+// wraps not found error from various sources
+func wrapNotFound(r Reference, err error) error {
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		err = fmt.Errorf("%w (%v)", NotFound, r)
+	}
+	if aerr, ok := err.(awserr.Error); ok {
+		switch aerr.Code() {
+		case s3.ErrCodeNoSuchBucket:
+			err = fmt.Errorf("%w (no such bucket; %v)", NotFound, r)
+		case s3.ErrCodeNoSuchKey:
+			err = fmt.Errorf("%w (no such key; %v)", NotFound, r)
+		}
+	}
+	return err
 }

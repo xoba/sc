@@ -89,7 +89,7 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 	p := fs.path(r)
 	fi, err := os.Stat(p)
 	if err != nil {
-		return nil, err
+		return nil, wrapNotFound(r, err)
 	}
 	if fi.IsDir() {
 		list, err := ioutil.ReadDir(p)

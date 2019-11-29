@@ -1,6 +1,7 @@
 package sc
 
 import (
+	"errors"
 	"net/url"
 )
 
@@ -15,3 +16,6 @@ type StorageCombinator interface {
 type Reference interface {
 	URI() *url.URL
 }
+
+// if Get method cannot find reference, combinator should return something that wraps this:
+var NotFound = errors.New("reference not found")
