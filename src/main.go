@@ -61,7 +61,9 @@ func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombin
 func main() {
 
 	const (
-		workingDir = "diskstore"
+		workingDir = "diskstore/work"
+		cacheDir   = "diskstore/cache"
+		merger     = "diskstore/merger"
 		listPath   = "/list"
 		prefix     = "myprefix"
 	)
@@ -71,7 +73,7 @@ func main() {
 
 	// create either a pure disk filesystem or file+s3 multiplexed:
 	{
-		fs := newFilesystem(workingDir)
+		fs := sc.NewPassthrough("fs", newFilesystem(workingDir))
 		calculator := sc.NewProgrammatic(func(r sc.Reference) (interface{}, error) {
 			u := r.URI()
 			if q := u.Query(); len(q) > 0 {
@@ -96,10 +98,12 @@ func main() {
 	}
 
 	// add listing capability:
-	store = newLister(store, newAppender("merging"), listPath)
+	store = newLister(store, newAppender(merger), listPath)
+
+	store = sc.NewPassthrough("cache", sc.NewCache(store, newFilesystem(cacheDir)))
 
 	// a passthrough for fun:
-	store = sc.NewPassthrough(store)
+	store = sc.NewPassthrough("", store)
 
 	// test out the calculator:
 	for i := 0; i < 3; i++ {
