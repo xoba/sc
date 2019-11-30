@@ -74,6 +74,7 @@ func main() {
 
 	{
 		store = sc.NewVersioning(newFilesystem(workingDir))
+		store = newLister(store, newAppender(merger), listPath)
 		store = sc.NewPassthrough("v", store)
 		r := sc.NewRef("test.txt")
 		check(store.Put(r, fmt.Sprintf("howdy at %v!", time.Now())))
