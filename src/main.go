@@ -79,12 +79,19 @@ func main() {
 		check(store.Put(r, fmt.Sprintf("howdy at %v!", time.Now())))
 		i, err := store.Get(r)
 		check(err)
-		fmt.Printf("got %s\n", show(i))
+		fmt.Printf("got: %s\n", show(i))
 		u, err := sc.ParseRef("test.txt#versions")
 		check(err)
 		list, err := store.Get(u)
 		check(err)
-		fmt.Printf("list: %s\n", show(list))
+		fmt.Printf("list:\n%s\n", show(list))
+		for _, v := range list.(sc.Versions) {
+			r, err := sc.ParseRef(fmt.Sprintf("test.txt?version=%d#versions", v.Version))
+			check(err)
+			i, err := store.Get(r)
+			check(err)
+			fmt.Printf("%s: %s\n", r, show(i))
+		}
 		return
 	}
 

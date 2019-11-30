@@ -17,5 +17,5 @@ type Reference interface {
 	URI() *url.URL
 }
 
-// if Get method cannot find reference, combinator should return something that wraps this:
+// if Get method cannot find reference, combinator should return something that wraps this error:
 var NotFound = errors.New("reference not found")

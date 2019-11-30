@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -16,7 +18,6 @@ func NewVersioning(c StorageCombinator) *Versioning {
 }
 
 // adds versioning to an existing combinator
-// a version query parameter
 type Versioning struct {
 	c StorageCombinator
 }
@@ -28,27 +29,35 @@ type VersionRecord struct {
 	Time      time.Time
 }
 
+// assumed to be sorted in ascending version order
 type Versions []VersionRecord
 
-func (v Versions) Max() (out int) {
-	for i, x := range v {
-		if i == 0 {
-			out = x.Version
-			continue
-		}
-		if x.Version > out {
-			out = x.Version
-		}
+func (v Versions) Find(version int) (*VersionRecord, error) {
+	i := sort.Search(len(v), func(i int) bool {
+		return v[i].Version >= version
+	})
+	if i < len(v) && v[i].Version == version {
+		return &v[i], nil
+	} else {
+		return nil, NotFound
 	}
-	return
 }
 
-func hashRef(r Reference, v int) string {
+func (v Versions) Max() (out int) {
+	n := len(v)
+	if n == 0 {
+		return 0
+	}
+	return v[n-1].Version
+
+}
+
+func hashRef(r Reference, v int) Reference {
 	h := md5.New()
 	e := json.NewEncoder(h)
 	e.Encode(r)
 	e.Encode(v)
-	return fmt.Sprintf("%x", h.Sum(nil))
+	return NewRef(fmt.Sprintf("%x", h.Sum(nil)))
 }
 
 func (v Versioning) Find(p string) (Reference, error) {
@@ -86,6 +95,8 @@ func (v Versioning) load(r Reference) (Versions, error) {
 }
 
 // uri fragment = "versions" returns the list of versions
+// unless there is also a "version" query parameter, then
+// that version is retrieved
 func (v Versioning) Get(r Reference) (interface{}, error) {
 	versions, err := v.load(r)
 	if err != nil && !errors.Is(err, NotFound) {
@@ -94,15 +105,29 @@ func (v Versioning) Get(r Reference) (interface{}, error) {
 	if len(versions) == 0 {
 		return nil, NotFound
 	}
-	if r.URI().Fragment == "versions" {
-		return versions, nil
+	versionIndex := func(i int) (interface{}, error) {
+		vr, err := versions.Find(i)
+		if err != nil {
+			return nil, err
+		}
+		r, err := ParseRef(vr.TargetURI)
+		if err != nil {
+			return nil, err
+		}
+		return v.c.Get(r)
 	}
-	latest := versions[len(versions)-1]
-	r2, err := ParseRef(latest.TargetURI)
-	if err != nil {
-		return nil, err
+	if r.URI().Fragment != "versions" {
+		return versionIndex(len(versions) - 1)
 	}
-	return v.c.Get(r2)
+	q := r.URI().Query()
+	if version := q.Get("version"); version != "" {
+		x, err := strconv.ParseInt(version, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return versionIndex(int(x))
+	}
+	return versions, nil
 }
 
 func (v Versioning) Put(r Reference, i interface{}) error {
@@ -111,7 +136,7 @@ func (v Versioning) Put(r Reference, i interface{}) error {
 		return err
 	}
 	newVersion := versions.Max() + 1
-	target := NewRef(hashRef(r, newVersion))
+	target := hashRef(r, newVersion)
 	if err := v.c.Put(target, i); err != nil {
 		return err
 	}
