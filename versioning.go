@@ -29,6 +29,11 @@ type VersionRecord struct {
 	Time      time.Time
 }
 
+func (v VersionRecord) String() string {
+	buf, _ := json.Marshal(v)
+	return string(buf)
+}
+
 // assumed to be sorted in ascending version order
 type Versions []VersionRecord
 
