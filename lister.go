@@ -3,6 +3,7 @@ package sc
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -63,6 +64,9 @@ func (lc ListingCombinator) update(r Reference, mode string) error {
 }
 
 func (lc ListingCombinator) Put(r Reference, i interface{}) error {
+	if list := lc.listReference.URI().String(); r.URI().String() == list {
+		return fmt.Errorf("path conflict with listing: %s", list)
+	}
 	if err := lc.update(r, "put"); err != nil {
 		return err
 	}
