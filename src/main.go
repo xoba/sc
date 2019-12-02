@@ -130,11 +130,26 @@ func NewStorageCombinator(base, listPath string) (sc.StorageCombinator, error) {
 	log := func(c sc.StorageCombinator) sc.StorageCombinator {
 		return sc.NewPassthrough(fmt.Sprintf("%T", c), c)
 	}
-	fs := log(newFilesystem(path.Join(base, "fs")))
-	versioning := log(sc.NewVersioning(fs))
-	appender := log(newAppender(path.Join(base, "append")))
-	lister := log(newLister(versioning, appender, listPath))
-	return lister, nil
+	store := log(
+		newLister(
+			log(
+				sc.NewVersioning(
+					log(
+						newFilesystem(
+							path.Join(base, "fs"),
+						),
+					),
+				),
+			),
+			log(
+				newAppender(
+					path.Join(base, "append"),
+				),
+			),
+			listPath,
+		),
+	)
+	return store, nil
 }
 
 func test2() {

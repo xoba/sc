@@ -61,6 +61,7 @@ func hashRef(r Reference, v int) Reference {
 	e := json.NewEncoder(h)
 	e.Encode(r.URI().String())
 	e.Encode(v)
+	e.Encode(`D6871E1B-4C52-423B-B526-1F2D82D1C996`)
 	return NewRef(fmt.Sprintf("%x", h.Sum(nil)))
 }
 
