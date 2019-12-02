@@ -80,9 +80,6 @@ func RunRetag() error {
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].v.LT(list[j].v)
 	})
-	for _, v := range list {
-		fmt.Println(v)
-	}
 	next := list[len(list)-1]
 	next.v.Patch += 1
 	fmt.Printf("next = %v\n", next)
@@ -133,6 +130,7 @@ func main() {
 
 	if retag {
 		check(RunRetag())
+		return
 	}
 
 	const (
