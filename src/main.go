@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -9,19 +10,76 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/blang/semver"
 	"github.com/xoba/sc"
 )
 
 var bucket string
+var retag bool
 
 func init() {
 	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip s3 altogether if blank")
+	flag.BoolVar(&retag, "tag", false, "re-tag with next patch version")
 	flag.Parse()
+}
+
+func runCmd(name string, args ...string) ([]byte, error) {
+	cmd := exec.Command(name, args...)
+	w := new(bytes.Buffer)
+	cmd.Stdout = w
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return nil, err
+	}
+	return w.Bytes(), nil
+}
+
+func RunRetag() error {
+	buf, err := runCmd("git", "tag")
+	if err != nil {
+		return err
+	}
+	var list []semver.Version
+	s := bufio.NewScanner(bytes.NewReader(buf))
+	for s.Scan() {
+		line := s.Text()
+		if !strings.HasPrefix(line, "v") {
+			return fmt.Errorf("bad tag: %q", line)
+		}
+		line = line[1:]
+		v, err := semver.Make(line)
+		if err != nil {
+			return err
+		}
+		list = append(list, v)
+	}
+	if err := s.Err(); err != nil {
+		return err
+	}
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].LT(list[j])
+	})
+	for _, v := range list {
+		fmt.Println(v)
+	}
+	next := list[len(list)-1]
+	next.Patch += 1
+	fmt.Printf("next = %v\n", next)
+	if _, err := runCmd("git", "tag", next.String()); err != nil {
+		return err
+	}
+	if _, err := runCmd("git", "push", "--tag"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func newFilesystem(mount string) sc.StorageCombinator {
@@ -60,6 +118,10 @@ func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombin
 }
 
 func main() {
+
+	if retag {
+		check(RunRetag())
+	}
 
 	const (
 		workingDir = "diskstore/work"

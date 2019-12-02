@@ -1,6 +1,7 @@
+*.test
 *~
 bin
 diskstore
-pkg
+gopath
 merging
-*.test
+pkg
