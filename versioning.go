@@ -59,7 +59,7 @@ func (v Versions) Max() (out int) {
 func hashRef(r Reference, v int) Reference {
 	h := md5.New()
 	e := json.NewEncoder(h)
-	e.Encode(r)
+	e.Encode(r.URI().String())
 	e.Encode(v)
 	return NewRef(fmt.Sprintf("%x", h.Sum(nil)))
 }

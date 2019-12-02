@@ -126,12 +126,43 @@ func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombin
 	return c
 }
 
+func NewStorageCombinator(listPath string) (sc.StorageCombinator, error) {
+	log := func(m string, c sc.StorageCombinator) sc.StorageCombinator {
+		return sc.NewPassthrough(m, c)
+	}
+	fs, err := sc.NewFileSystem("diskstore", os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	versioning := sc.NewVersioning(log("fs", fs))
+	appender, err := sc.NewAppendingCombinator("diskstore/append", os.ModePerm)
+	if err != nil {
+		return nil, err
+	}
+	lister, err := sc.NewListingCombinator(log("version", versioning), log("append", appender), listPath)
+	if err != nil {
+		return nil, err
+	}
+	return lister, nil
+}
+
+func test2() {
+	c, err := NewStorageCombinator("/list")
+	check(err)
+	check(c.Put(sc.NewRef("a.txt"), "hi there A"))
+	check(c.Put(sc.NewRef("b.txt"), "hi there B"))
+	check(c.Put(sc.NewRef("c.txt"), "hi there C"))
+	os.Exit(0)
+}
+
 func main() {
 
 	if retag {
 		check(RunRetag())
 		return
 	}
+
+	test2()
 
 	const (
 		workingDir = "diskstore/work"
