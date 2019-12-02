@@ -15,7 +15,7 @@ type AppendingCombinator struct {
 }
 
 func NewAppendingCombinator(dir string, mode os.FileMode) (*AppendingCombinator, error) {
-	if _, err := os.Stat(dir); err != nil {
+	if err := mkdir(dir, mode); err != nil {
 		return nil, err
 	}
 	return &AppendingCombinator{

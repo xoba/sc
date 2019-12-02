@@ -112,7 +112,6 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 }
 
 func newAppender(dir string) sc.StorageCombinator {
-	check(os.MkdirAll(dir, os.ModePerm))
 	c, err := sc.NewAppendingCombinator(dir, 0644)
 	check(err)
 	return c
