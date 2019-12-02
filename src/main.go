@@ -51,6 +51,11 @@ func (v Version) String() string {
 }
 
 func RunRetag() error {
+	if buf, err := runCmd("git", "status", "--porcelain"); err != nil {
+		return err
+	} else if len(buf) > 0 {
+		return fmt.Errorf("can't tag with unclean status")
+	}
 	buf, err := runCmd("git", "tag")
 	if err != nil {
 		return err
