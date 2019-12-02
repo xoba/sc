@@ -42,12 +42,20 @@ func runCmd(name string, args ...string) ([]byte, error) {
 	return w.Bytes(), nil
 }
 
+type Version struct {
+	v semver.Version
+}
+
+func (v Version) String() string {
+	return fmt.Sprintf("v%s", v.v)
+}
+
 func RunRetag() error {
 	buf, err := runCmd("git", "tag")
 	if err != nil {
 		return err
 	}
-	var list []semver.Version
+	var list []Version
 	s := bufio.NewScanner(bytes.NewReader(buf))
 	for s.Scan() {
 		line := s.Text()
@@ -59,21 +67,21 @@ func RunRetag() error {
 		if err != nil {
 			return err
 		}
-		list = append(list, v)
+		list = append(list, Version{v: v})
 	}
 	if err := s.Err(); err != nil {
 		return err
 	}
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].LT(list[j])
+		return list[i].v.LT(list[j].v)
 	})
 	for _, v := range list {
 		fmt.Println(v)
 	}
 	next := list[len(list)-1]
-	next.Patch += 1
+	next.v.Patch += 1
 	fmt.Printf("next = %v\n", next)
-	if _, err := runCmd("git", "tag", "v"+next.String()); err != nil {
+	if _, err := runCmd("git", "tag", next.String()); err != nil {
 		return err
 	}
 	if _, err := runCmd("git", "push", "--tag"); err != nil {
