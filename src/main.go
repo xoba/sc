@@ -96,7 +96,7 @@ func RunRetag() error {
 }
 
 func newFilesystem(mount string) sc.StorageCombinator {
-	c, err := sc.NewFileSystem("", mount, os.ModePerm)
+	c, err := sc.NewFileSystem(mount, os.ModePerm)
 	check(err)
 	return c
 }
@@ -142,6 +142,15 @@ func main() {
 		listPath   = "/list"
 		prefix     = "myprefix"
 	)
+
+	if true {
+		fs := newFilesystem(workingDir)
+		u, err := url.Parse(path.Join("two words", "a/b/c/test.txt"))
+		check(err)
+		fmt.Println(u)
+		check(fs.Put(sc.NewURI(u), "howdy!!"))
+		return
+	}
 
 	// our top-level storage combinator, which will be assembled from parts:
 	var store sc.StorageCombinator

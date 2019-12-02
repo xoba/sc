@@ -15,7 +15,7 @@ import (
 
 // NewFileSystem creates a new filesystem storage combinator with
 // given scheme, mountpoint, and default file mode
-func NewFileSystem(scheme, mount string, mode os.FileMode) (*FileSystem, error) {
+func NewFileSystem(mount string, mode os.FileMode) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
 	if mount == "" {
 		return nil, fmt.Errorf("needs a mount point")
@@ -23,10 +23,7 @@ func NewFileSystem(scheme, mount string, mode os.FileMode) (*FileSystem, error) 
 	if err := mkdir(mount, mode); err != nil {
 		return nil, err
 	}
-	if scheme == "" {
-		scheme = "file"
-	}
-	return &FileSystem{scheme: scheme, mount: mount, mode: mode}, nil
+	return &FileSystem{mount: mount, mode: mode}, nil
 }
 
 // FileSystem is a storage combinator based on files
@@ -126,7 +123,7 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 		if _, err := io.Copy(f, t); err != nil {
 			return err
 		}
-		return nil
+		return f.Close()
 	default:
 		buf = []byte(fmt.Sprintf("%v", t))
 	}
