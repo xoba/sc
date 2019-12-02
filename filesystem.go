@@ -15,26 +15,25 @@ import (
 
 // NewFileSystem creates a new filesystem storage combinator with
 // given scheme, mountpoint, and default file mode
-func NewFileSystem(mount string, mode os.FileMode) (*FileSystem, error) {
+func NewFileSystem(mount string) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
 	if mount == "" {
 		return nil, fmt.Errorf("needs a mount point")
 	}
-	if err := mkdir(mount, mode); err != nil {
+	if err := mkdir(mount); err != nil {
 		return nil, err
 	}
-	return &FileSystem{mount: mount, mode: mode}, nil
+	return &FileSystem{mount: mount}, nil
 }
 
 // FileSystem is a storage combinator based on files
 type FileSystem struct {
-	mode          os.FileMode
 	scheme, mount string
 }
 
-func mkdir(p string, mode os.FileMode) error {
+func mkdir(p string) error {
 	if _, err := os.Stat(p); errors.Is(err, os.ErrNotExist) {
-		if err := os.MkdirAll(p, mode); err != nil {
+		if err := os.MkdirAll(p, os.ModePerm); err != nil {
 			return err
 		}
 	}
@@ -104,7 +103,7 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 
 func (fs FileSystem) Put(r Reference, i interface{}) error {
 	p := fs.path(r)
-	if err := mkdir(filepath.Dir(p), fs.mode); err != nil {
+	if err := mkdir(filepath.Dir(p)); err != nil {
 		return err
 	}
 	var buf []byte
@@ -115,7 +114,7 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 		buf = []byte(t)
 	case io.ReadCloser:
 		defer t.Close()
-		f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, fs.mode)
+		f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -127,7 +126,7 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 	default:
 		buf = []byte(fmt.Sprintf("%v", t))
 	}
-	return ioutil.WriteFile(p, buf, fs.mode)
+	return ioutil.WriteFile(p, buf, os.ModePerm)
 }
 
 func (fs FileSystem) Delete(r Reference) error {

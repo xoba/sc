@@ -54,21 +54,21 @@ func (pt Passthrough) debug3(m string, f f3, p string) (Reference, error) {
 }
 
 func (pt Passthrough) Get(r Reference) (interface{}, error) {
-	return pt.debug1("get", pt.c.Get, r)
+	return pt.debug1("Get", pt.c.Get, r)
 }
 
 func (pt Passthrough) Put(r Reference, i interface{}) error {
-	return pt.debug2("put", pt.c.Put, r, i)
+	return pt.debug2("Put", pt.c.Put, r, i)
 }
 
 func (pt Passthrough) Merge(r Reference, i interface{}) error {
-	return pt.debug2("merge", pt.c.Merge, r, i)
+	return pt.debug2("Merge", pt.c.Merge, r, i)
 }
 
 func (pt Passthrough) Delete(r Reference) error {
-	return pt.debug0("delete", pt.c.Delete, r)
+	return pt.debug0("Delete", pt.c.Delete, r)
 }
 
 func (pt Passthrough) Find(p string) (Reference, error) {
-	return pt.debug3("find", pt.c.Find, p)
+	return pt.debug3("Find", pt.c.Find, p)
 }

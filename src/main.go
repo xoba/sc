@@ -93,7 +93,7 @@ func RunRetag() error {
 }
 
 func newFilesystem(mount string) sc.StorageCombinator {
-	c, err := sc.NewFileSystem(mount, os.ModePerm)
+	c, err := sc.NewFileSystem(mount)
 	check(err)
 	return c
 }
@@ -109,7 +109,7 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 }
 
 func newAppender(dir string) sc.StorageCombinator {
-	c, err := sc.NewAppendingCombinator(dir, 0644)
+	c, err := sc.NewAppendingCombinator(dir)
 	check(err)
 	return c
 }
@@ -126,39 +126,36 @@ func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombin
 	return c
 }
 
-func NewStorageCombinator(listPath string) (sc.StorageCombinator, error) {
-	log := func(m string, c sc.StorageCombinator) sc.StorageCombinator {
-		return sc.NewPassthrough(m, c)
+func NewStorageCombinator(base, listPath string) (sc.StorageCombinator, error) {
+	log := func(c sc.StorageCombinator) sc.StorageCombinator {
+		return sc.NewPassthrough(fmt.Sprintf("%T", c), c)
 	}
-	fs, err := sc.NewFileSystem("diskstore", os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	versioning := sc.NewVersioning(log("fs", fs))
-	appender, err := sc.NewAppendingCombinator("diskstore/append", os.ModePerm)
-	if err != nil {
-		return nil, err
-	}
-	lister, err := sc.NewListingCombinator(log("version", versioning), log("append", appender), listPath)
-	if err != nil {
-		return nil, err
-	}
+	fs := log(newFilesystem(path.Join(base, "fs")))
+	versioning := log(sc.NewVersioning(fs))
+	appender := log(newAppender(path.Join(base, "append")))
+	lister := log(newLister(versioning, appender, listPath))
 	return lister, nil
 }
 
 func test2() {
-	c, err := NewStorageCombinator("/list")
+	c, err := NewStorageCombinator("diskstore", "/list")
 	check(err)
 	check(c.Put(sc.NewRef("a.txt"), "hi there A"))
 	check(c.Put(sc.NewRef("b.txt"), "hi there B"))
 	check(c.Put(sc.NewRef("c.txt"), "hi there C"))
-	r, err := c.Find("/list")
+	{
+		r, err := c.Find("/list")
+		check(err)
+		fmt.Println(r)
+		i, err := c.Get(r)
+		check(err)
+		fmt.Println(show(i))
+	}
+	r, err := sc.ParseRef("a.txt#versions")
 	check(err)
-	fmt.Println(r)
 	i, err := c.Get(r)
 	check(err)
 	fmt.Println(show(i))
-	os.Exit(0)
 }
 
 func main() {
@@ -168,7 +165,10 @@ func main() {
 		return
 	}
 
-	test2()
+	if true {
+		test2()
+		os.Exit(0)
+	}
 
 	const (
 		workingDir = "diskstore/work"

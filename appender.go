@@ -10,17 +10,15 @@ import (
 
 // will simply append data upon Merge call
 type AppendingCombinator struct {
-	dir  string
-	mode os.FileMode
+	dir string
 }
 
-func NewAppendingCombinator(dir string, mode os.FileMode) (*AppendingCombinator, error) {
-	if err := mkdir(dir, mode); err != nil {
+func NewAppendingCombinator(dir string) (*AppendingCombinator, error) {
+	if err := mkdir(dir); err != nil {
 		return nil, err
 	}
 	return &AppendingCombinator{
-		dir:  dir,
-		mode: mode,
+		dir: dir,
 	}, nil
 }
 
@@ -49,6 +47,10 @@ func (ac AppendingCombinator) Get(r Reference) (interface{}, error) {
 }
 
 func (ac AppendingCombinator) Put(r Reference, i interface{}) error {
+	file := ac.file(r)
+	if err := mkdir(filepath.Dir(file)); err != nil {
+		return err
+	}
 	var buf []byte
 	switch t := i.(type) {
 	case []byte:
@@ -58,7 +60,7 @@ func (ac AppendingCombinator) Put(r Reference, i interface{}) error {
 	default:
 		return fmt.Errorf("unsupported type: %T", t)
 	}
-	return ioutil.WriteFile(ac.file(r), buf, ac.mode)
+	return ioutil.WriteFile(file, buf, os.ModePerm)
 }
 
 func (ac AppendingCombinator) Delete(r Reference) error {
@@ -67,8 +69,9 @@ func (ac AppendingCombinator) Delete(r Reference) error {
 
 // simple appends or creates
 func (ac AppendingCombinator) Merge(r Reference, i interface{}) error {
-	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, ac.mode)
+	f, err := os.OpenFile(ac.file(r), os.O_APPEND|os.O_WRONLY|os.O_CREATE, os.ModePerm)
 	if err != nil {
+		fmt.Println("***", ac.file(r))
 		return err
 	}
 	defer f.Close()
