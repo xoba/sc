@@ -73,7 +73,7 @@ func RunRetag() error {
 	next := list[len(list)-1]
 	next.Patch += 1
 	fmt.Printf("next = %v\n", next)
-	if _, err := runCmd("git", "tag", next.String()); err != nil {
+	if _, err := runCmd("git", "tag", "v"+next.String()); err != nil {
 		return err
 	}
 	if _, err := runCmd("git", "push", "--tag"); err != nil {
