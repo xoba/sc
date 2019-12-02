@@ -14,34 +14,61 @@ type Passthrough struct {
 	m string
 }
 
-func (pt Passthrough) debug(msg string, r Reference) {
-	if pt.m == "" {
-		return
+type (
+	f0 func(Reference) error
+	f1 func(Reference) (interface{}, error)
+	f2 func(Reference, interface{}) error
+	f3 func(string) (Reference, error)
+)
+
+func (pt Passthrough) debug0(m string, f f0, r Reference) error {
+	err := f(r)
+	if pt.m != "" {
+		log.Printf("%s.%s(%s) = %v", pt.m, m, r.URI(), err)
 	}
-	log.Printf("%s.%s: %v", pt.m, msg, r.URI())
+	return err
+}
+
+func (pt Passthrough) debug1(m string, f f1, r Reference) (interface{}, error) {
+	i, err := f(r)
+	if pt.m != "" {
+		log.Printf("%s.%s(%s) = (%T,%v)", pt.m, m, r.URI(), i, err)
+	}
+	return i, err
+}
+
+func (pt Passthrough) debug2(m string, f f2, r Reference, i interface{}) error {
+	err := f(r, i)
+	if pt.m != "" {
+		log.Printf("%s.%s(%s,%T) = %v", pt.m, m, r.URI(), i, err)
+	}
+	return err
+}
+
+func (pt Passthrough) debug3(m string, f f3, p string) (Reference, error) {
+	r, err := f(p)
+	if pt.m != "" {
+		log.Printf("%s.%s(%s) = (%s,%v)", pt.m, m, p, r.URI(), err)
+	}
+	return r, err
 }
 
 func (pt Passthrough) Get(r Reference) (interface{}, error) {
-	pt.debug("get", r)
-	return pt.c.Get(r)
+	return pt.debug1("get", pt.c.Get, r)
 }
 
 func (pt Passthrough) Put(r Reference, i interface{}) error {
-	pt.debug("put", r)
-	return pt.c.Put(r, i)
+	return pt.debug2("put", pt.c.Put, r, i)
 }
 
 func (pt Passthrough) Merge(r Reference, i interface{}) error {
-	pt.debug("merge", r)
-	return pt.c.Merge(r, i)
+	return pt.debug2("merge", pt.c.Merge, r, i)
 }
 
 func (pt Passthrough) Delete(r Reference) error {
-	pt.debug("delete", r)
-	return pt.c.Delete(r)
+	return pt.debug0("delete", pt.c.Delete, r)
 }
 
 func (pt Passthrough) Find(p string) (Reference, error) {
-	pt.debug("find", NewRef(p))
-	return pt.c.Find(p)
+	return pt.debug3("find", pt.c.Find, p)
 }
