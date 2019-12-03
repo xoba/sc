@@ -172,6 +172,10 @@ func (versions Versions) Encode(w io.Writer) error {
 }
 
 func (v Versioning) Delete(r Reference) error {
+	return fmt.Errorf("unimplemented")
+
+	// need to think about this: should actually add a "delete" version,
+	// not delete it per se!!!
 	return v.c.Delete(r)
 }
 
