@@ -159,6 +159,7 @@ func test2() {
 	check(c.Put(sc.NewRef("b.txt"), "hi there B"))
 	check(c.Put(sc.NewRef("c.txt"), "hi there C"))
 	{
+		fmt.Printf("listing:\n")
 		r, err := c.Find("/list")
 		check(err)
 		fmt.Println(r)
@@ -166,11 +167,14 @@ func test2() {
 		check(err)
 		fmt.Println(show(i))
 	}
-	r, err := sc.ParseRef("a.txt#versions")
-	check(err)
-	i, err := c.Get(r)
-	check(err)
-	fmt.Println(show(i))
+	{
+		fmt.Printf("versions:\n")
+		r, err := sc.ParseRef("a.txt#versions")
+		check(err)
+		i, err := c.Get(r)
+		check(err)
+		fmt.Println(show(i))
+	}
 }
 
 func main() {
