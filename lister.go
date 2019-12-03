@@ -36,10 +36,8 @@ func (lc ListingCombinator) Find(p string) (Reference, error) {
 }
 
 func (lc ListingCombinator) Get(r Reference) (interface{}, error) {
-	if r.URI() == lc.listReference.URI() {
+	if r.URI().String() == lc.listReference.URI().String() {
 		return lc.appender.Get(r)
-	} else {
-		fmt.Printf("ListingCombinator: %q vs %q\n", r.URI(), lc.listReference)
 	}
 	return lc.raw.Get(r)
 }
