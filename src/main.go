@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"net/url"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/blang/semver"
 	"github.com/xoba/sc"
@@ -108,6 +110,27 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 	return c
 }
 
+func encrypt(c sc.StorageCombinator) sc.StorageCombinator {
+	p, err := session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})
+	check(err)
+	keyID, err := LoadKeyInfo()
+	check(err)
+	e, err := sc.NewEncrypter(kms.New(p), keyID, c)
+	check(err)
+	return e
+}
+
+// kms.txt contains key id
+func LoadKeyInfo() (keyID string, err error) {
+	buf, err := ioutil.ReadFile("kms.txt")
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(buf)), nil
+}
+
 func newAppender(dir string) sc.StorageCombinator {
 	c, err := sc.NewFileAppender(dir)
 	check(err)
@@ -188,10 +211,31 @@ func appenderTest() {
 	check(err)
 }
 
+const (
+	workingDir = "diskstore/work"
+	cacheDir   = "diskstore/cache"
+	merger     = "diskstore/merger"
+	listPath   = "/list"
+	prefix     = "myprefix"
+)
+
 func main() {
 
 	if retag {
 		check(RunRetag())
+		return
+	}
+
+	if true {
+		fs := encrypt(newFilesystem(workingDir))
+		u, err := url.Parse(path.Join("two words", "a/b/c/test.txt"))
+		check(err)
+		fmt.Println(u)
+		r := sc.NewURI(u)
+		check(fs.Put(r, "howdy!!"))
+		i, err := fs.Get(r)
+		check(err)
+		fmt.Printf("got: %q\n", show(i))
 		return
 	}
 
@@ -203,23 +247,6 @@ func main() {
 	if true {
 		test2()
 		os.Exit(0)
-	}
-
-	const (
-		workingDir = "diskstore/work"
-		cacheDir   = "diskstore/cache"
-		merger     = "diskstore/merger"
-		listPath   = "/list"
-		prefix     = "myprefix"
-	)
-
-	if true {
-		fs := newFilesystem(workingDir)
-		u, err := url.Parse(path.Join("two words", "a/b/c/test.txt"))
-		check(err)
-		fmt.Println(u)
-		check(fs.Put(sc.NewURI(u), "howdy!!"))
-		return
 	}
 
 	// our top-level storage combinator, which will be assembled from parts:
