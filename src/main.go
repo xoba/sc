@@ -109,7 +109,7 @@ func newS3(bucket, prefix string) sc.StorageCombinator {
 }
 
 func newAppender(dir string) sc.StorageCombinator {
-	c, err := sc.NewAppendingCombinator(dir)
+	c, err := sc.NewFileAppender(dir)
 	check(err)
 	return c
 }
@@ -177,11 +177,27 @@ func test2() {
 	}
 }
 
+func appenderTest() {
+	a, err := sc.NewAppender(newFilesystem("diskstore"))
+	var c sc.StorageCombinator
+	c = a
+	check(c.Put(sc.NewRef("a.txt"), "hi there A\n"))
+	check(c.Put(sc.NewRef("b.txt"), "hi there B\n"))
+	check(c.Put(sc.NewRef("c.txt"), "hi there C\n"))
+	check(c.Merge(sc.NewRef("a.txt"), "hello again!\n"))
+	check(err)
+}
+
 func main() {
 
 	if retag {
 		check(RunRetag())
 		return
+	}
+
+	if true {
+		appenderTest()
+		os.Exit(0)
 	}
 
 	if true {

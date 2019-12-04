@@ -13,7 +13,7 @@ type AppendingCombinator struct {
 	dir string
 }
 
-func NewAppendingCombinator(dir string) (*AppendingCombinator, error) {
+func NewFileAppender(dir string) (*AppendingCombinator, error) {
 	if err := mkdir(dir); err != nil {
 		return nil, err
 	}
