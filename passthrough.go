@@ -45,14 +45,6 @@ func (pt Passthrough) debug2(m string, f f2, r Reference, i interface{}) error {
 	return err
 }
 
-func (pt Passthrough) debug3(m string, f f3, p string) (Reference, error) {
-	r, err := f(p)
-	if pt.m != "" {
-		log.Printf("%s.%s(%s) = (%s,%v)", pt.m, m, p, r.URI(), err)
-	}
-	return r, err
-}
-
 func (pt Passthrough) Get(r Reference) (interface{}, error) {
 	return pt.debug1("Get", pt.c.Get, r)
 }
@@ -67,8 +59,4 @@ func (pt Passthrough) Merge(r Reference, i interface{}) error {
 
 func (pt Passthrough) Delete(r Reference) error {
 	return pt.debug0("Delete", pt.c.Delete, r)
-}
-
-func (pt Passthrough) Find(p string) (Reference, error) {
-	return pt.debug3("Find", pt.c.Find, p)
 }

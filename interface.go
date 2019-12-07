@@ -6,16 +6,20 @@ import (
 )
 
 type StorageCombinator interface {
-	Find(string) (Reference, error) // a sort of query or naming facility
 	Get(Reference) (interface{}, error)
 	Put(Reference, interface{}) error
 	Delete(Reference) error
-	Merge(Reference, interface{}) error // somehow updates the reference
+	Merge(Reference, interface{}) error
 }
 
 type Reference interface {
 	URI() *url.URL
 }
 
-// if Get method cannot find reference, combinator should return something that wraps this error:
-var NotFound = errors.New("reference not found")
+var (
+	// if Get method cannot find reference, combinator should return something that wraps this error:
+	NotFound = errors.New("reference not found")
+
+	// if any method cannot be performed, combinator should return something that wraps this error:
+	NotSupported = errors.New("operation not supported")
+)

@@ -76,11 +76,3 @@ func (m Multiplexer) Delete(r Reference) error {
 	}
 	return c.Delete(r)
 }
-
-func (m Multiplexer) Find(p string) (Reference, error) {
-	c, err := m.find(p)
-	if err != nil {
-		return nil, err
-	}
-	return c.Find(p)
-}

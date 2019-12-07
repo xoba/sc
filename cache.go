@@ -18,13 +18,6 @@ func (self Cache) Get(r Reference) (interface{}, error) {
 	return self.u.Get(r)
 }
 
-func (self Cache) Find(p string) (Reference, error) {
-	if r, err := self.c.Find(p); err == nil {
-		return r, err
-	}
-	return self.u.Find(p)
-}
-
 func (self Cache) Put(r Reference, i interface{}) error {
 	if err := self.c.Put(r, i); err != nil {
 		return err

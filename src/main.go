@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -21,6 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/blang/semver"
+	_ "github.com/snowflakedb/gosnowflake"
 	"github.com/xoba/sc"
 )
 
@@ -143,13 +145,13 @@ func newMultiplexer(m map[string]sc.StorageCombinator) sc.StorageCombinator {
 	return c
 }
 
-func newLister(raw, appender sc.StorageCombinator, path string) sc.StorageCombinator {
-	c, err := sc.NewListingCombinator(raw, appender, path)
+func newLister(raw, appender sc.StorageCombinator, listRef sc.Reference) sc.StorageCombinator {
+	c, err := sc.NewListingCombinator(raw, appender, listRef)
 	check(err)
 	return c
 }
 
-func NewStorageCombinator(base, listPath string) (sc.StorageCombinator, error) {
+func NewStorageCombinator(base string, listRef sc.Reference) (sc.StorageCombinator, error) {
 	log := func(c sc.StorageCombinator) sc.StorageCombinator {
 		return sc.NewPassthrough(fmt.Sprintf("%T", c), c)
 	}
@@ -169,35 +171,10 @@ func NewStorageCombinator(base, listPath string) (sc.StorageCombinator, error) {
 					path.Join(base, "append"),
 				),
 			),
-			listPath,
+			listRef,
 		),
 	)
 	return store, nil
-}
-
-func test2() {
-	c, err := NewStorageCombinator("diskstore", "/list")
-	check(err)
-	check(c.Put(sc.NewRef("a.txt"), "hi there A"))
-	check(c.Put(sc.NewRef("b.txt"), "hi there B"))
-	check(c.Put(sc.NewRef("c.txt"), "hi there C"))
-	{
-		fmt.Printf("listing:\n")
-		r, err := c.Find("/list")
-		check(err)
-		fmt.Println(r)
-		i, err := c.Get(r)
-		check(err)
-		fmt.Println(show(i))
-	}
-	{
-		fmt.Printf("versions:\n")
-		r, err := sc.ParseRef("a.txt#versions")
-		check(err)
-		i, err := c.Get(r)
-		check(err)
-		fmt.Println(show(i))
-	}
 }
 
 func appenderTest() {
@@ -219,6 +196,39 @@ const (
 	prefix     = "myprefix"
 )
 
+func OpenDB() (*sql.DB, error) {
+	m, err := dbInfo()
+	if err != nil {
+		return nil, err
+	}
+	u, err := url.Parse(fmt.Sprintf("%[1]s:%[2]s@%[3]s/%[4]s/%[5]s?warehouse=%[6]s",
+		url.QueryEscape(m["user"]),
+		url.QueryEscape(m["password"]),
+		m["account"],
+		m["db"],
+		m["schema"],
+		m["warehouse"],
+	))
+	if err != nil {
+		return nil, err
+	}
+	return sql.Open("snowflake", u.String())
+}
+
+func dbInfo() (map[string]string, error) {
+	f, err := os.Open("snowflake.json")
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	d := json.NewDecoder(f)
+	var m map[string]string
+	if err := d.Decode(&m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func main() {
 
 	if retag {
@@ -226,35 +236,42 @@ func main() {
 		return
 	}
 
-	if true {
-		fs := encrypt(newFilesystem(workingDir))
-		u, err := url.Parse(path.Join("two words", "a/b/c/test.txt"))
-		check(err)
-		fmt.Println(u)
-		r := sc.NewURI(u)
-		check(fs.Put(r, "howdy!!"))
-		i, err := fs.Get(r)
-		check(err)
-		fmt.Printf("got: %q\n", show(i))
-		return
-	}
+	db, err := OpenDB()
+	check(err)
+	check(db.Ping())
 
-	if true {
-		appenderTest()
-		os.Exit(0)
-	}
+	c, err := sc.NewDatabaseCombinator(db)
+	check(err)
 
-	if true {
-		test2()
-		os.Exit(0)
-	}
+	info, err := dbInfo()
+	check(err)
+	var u url.URL
+	u.Scheme = "sql"
+	u.Path = "/myname"
+	v := make(url.Values)
+	v.Set("query", info["query"])
+	v.Set("format", "csv")
+	v.Set("interface", "string")
+	u.RawQuery = v.Encode()
+
+	r := sc.NewURI(&u)
+	i, err := c.Get(r)
+	check(err)
+	fmt.Println(show(i))
+
+	return
+
+	// -------------------------------------------------------
+
+	listRef, err := sc.ParseRef(listPath)
+	check(err)
 
 	// our top-level storage combinator, which will be assembled from parts:
 	var store sc.StorageCombinator
 
 	{
 		store = sc.NewVersioning(newFilesystem(workingDir))
-		store = newLister(store, newAppender(merger), listPath)
+		store = newLister(store, newAppender(merger), listRef)
 		store = sc.NewPassthrough("v", store)
 		r := sc.NewRef("test.txt")
 		check(store.Put(r, fmt.Sprintf("howdy at %v!", time.Now())))
@@ -303,7 +320,7 @@ func main() {
 	}
 
 	// add listing capability:
-	store = newLister(store, newAppender(merger), listPath)
+	store = newLister(store, newAppender(merger), listRef)
 
 	store = sc.NewPassthrough("cache", sc.NewCache(store, newFilesystem(cacheDir)))
 
@@ -359,27 +376,9 @@ func main() {
 		fmt.Printf("can't traverse %q': %v\n", root, err)
 	}
 
-	// a function to find stuff with our combinator and show it
-	find := func(q string) {
-		r, err := store.Find(q)
-		if err != nil {
-			fmt.Printf("can't find %q: %v\n", q, err)
-		} else {
-			fmt.Printf("found %q: %s\n", q, r.URI())
-			o, err := store.Get(r)
-			check(err)
-			fmt.Printf("got: %q\n", show(o))
-		}
-	}
-
-	find("/dir0/sub/test_0_0.txt")
-	find("/dir1/sub/test_1_1.txt")
-
 	// use the lister functionality to get a list of what we mutated
 	{
-		list, err := store.Find(listPath)
-		check(err)
-		x, err := store.Get(list)
+		x, err := store.Get(listRef)
 		check(err)
 		fmt.Println(show(x))
 	}

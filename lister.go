@@ -15,24 +15,12 @@ type ListingCombinator struct {
 }
 
 // appender's merge method just appends to growing file
-func NewListingCombinator(raw, appender StorageCombinator, listPath string) (*ListingCombinator, error) {
-	r, err := appender.Find(listPath)
-	if err != nil {
-		return nil, err
-	}
+func NewListingCombinator(raw, appender StorageCombinator, r Reference) (*ListingCombinator, error) {
 	return &ListingCombinator{
 		raw:           raw,
 		appender:      appender,
-		listPath:      listPath,
 		listReference: r,
 	}, nil
-}
-
-func (lc ListingCombinator) Find(p string) (Reference, error) {
-	if p == lc.listPath {
-		return lc.listReference, nil
-	}
-	return lc.raw.Find(p)
 }
 
 func (lc ListingCombinator) Get(r Reference) (interface{}, error) {

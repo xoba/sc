@@ -65,10 +65,6 @@ func hashRef(r Reference, v int) Reference {
 	return NewRef(fmt.Sprintf("%x", h.Sum(nil)))
 }
 
-func (v Versioning) Find(p string) (Reference, error) {
-	return v.c.Find(p)
-}
-
 func (v Versioning) load(r Reference) (Versions, error) {
 	i, err := v.c.Get(r)
 	if err != nil {

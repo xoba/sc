@@ -18,10 +18,6 @@ func NewAppender(c StorageCombinator) (*Appender, error) {
 	return &a, nil
 }
 
-func (a Appender) Find(p string) (Reference, error) {
-	return a.c.Find(p)
-}
-
 func (a Appender) Get(r Reference) (interface{}, error) {
 	return a.c.Get(r)
 }

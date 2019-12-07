@@ -47,10 +47,6 @@ func NewEncrypter(svc *kms.KMS, keyID string, c StorageCombinator) (*Encrypter, 
 	return &e, nil
 }
 
-func (e Encrypter) Find(p string) (Reference, error) {
-	return e.c.Find(p)
-}
-
 func (e Encrypter) Get(r Reference) (interface{}, error) {
 	i, err := e.c.Get(r)
 	if err != nil {
