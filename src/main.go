@@ -434,6 +434,14 @@ func main() {
 
 // interprets and shows something we get from a storage combinator
 func show(i interface{}) string {
+	reader := func(r io.Reader) string {
+		w := new(bytes.Buffer)
+		if _, err := io.Copy(w, r); err != nil {
+			check(err)
+		}
+		return w.String()
+	}
+
 	switch t := i.(type) {
 	case []byte:
 		return string(t)
@@ -441,11 +449,9 @@ func show(i interface{}) string {
 		return t
 	case io.ReadCloser:
 		defer t.Close()
-		w := new(bytes.Buffer)
-		if _, err := io.Copy(w, t); err != nil {
-			check(err)
-		}
-		return w.String()
+		return reader(t)
+	case io.Reader:
+		return reader(t)
 	case []sc.FileReference:
 		w := new(bytes.Buffer)
 		e := json.NewEncoder(w)
