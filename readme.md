@@ -16,11 +16,10 @@ go get github.com/xoba/sc
 our interface for storage combinators is as follows, from [interface.go](https://github.com/xoba/sc/blob/master/interface.go):
 ```go
 type StorageCombinator interface {
-	Find(string) (Reference, error) // a sort of query or naming facility
 	Get(Reference) (interface{}, error)
 	Put(Reference, interface{}) error
 	Delete(Reference) error
-	Merge(Reference, interface{}) error // somehow update the reference
+	Merge(Reference, interface{}) error
 }
 
 type Reference interface {
@@ -41,3 +40,6 @@ output = json
 region = us-east-1
 ```
 respectively.
+
+please note that in major version 0, which is experimental, we do not offer
+any compatibility guarantees.
