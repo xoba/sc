@@ -20,11 +20,8 @@ func NewDatabaseCombinator(db *sql.DB) (*DatabaseCombinator, error) {
 }
 
 func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
-
-	q := r.URI().Query()
-
-	queryProc := func(key string, required bool, defaultValue string) (string, error) {
-		v := strings.TrimSpace(q.Get(key))
+	proc := func(key string, required bool, defaultValue string) (string, error) {
+		v := strings.TrimSpace(r.URI().Query().Get(key))
 		if required && len(v) == 0 {
 			return "", fmt.Errorf("needs a %q parameter", key)
 		}
@@ -33,24 +30,22 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		}
 		return v, nil
 	}
-
-	query, err := queryProc("query", true, "")
+	query, err := proc("query", true, "")
 	if err != nil {
 		return nil, err
 	}
-	format, err := queryProc("format", true, "")
+	format, err := proc("format", false, "csv")
 	if err != nil {
 		return nil, err
 	}
-	na, err := queryProc("na", false, "NA")
+	na, err := proc("na", false, "NA")
 	if err != nil {
 		return nil, err
 	}
-	outputType, err := queryProc("interface", false, "bytes")
+	outputType, err := proc("interface", false, "bytes")
 	if err != nil {
 		return nil, err
 	}
-
 	rows, err := dc.db.Query(query)
 	if err != nil {
 		return nil, err
