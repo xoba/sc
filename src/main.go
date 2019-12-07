@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -201,32 +202,66 @@ func OpenDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	u, err := url.Parse(fmt.Sprintf("%[1]s:%[2]s@%[3]s/%[4]s/%[5]s?warehouse=%[6]s",
-		url.QueryEscape(m["user"]),
-		url.QueryEscape(m["password"]),
-		m["account"],
-		m["db"],
-		m["schema"],
-		m["warehouse"],
-	))
+	u, err := m.URL()
 	if err != nil {
 		return nil, err
 	}
 	return sql.Open("snowflake", u.String())
 }
 
-func dbInfo() (map[string]string, error) {
+type DBInfo struct {
+	Account   string
+	User      string
+	Password  string
+	Query     string
+	DB        string
+	Schema    string
+	Warehouse string
+}
+
+func (m DBInfo) URL() (*url.URL, error) {
+	return url.Parse(fmt.Sprintf("%[1]s:%[2]s@%[3]s/%[4]s/%[5]s?warehouse=%[6]s",
+		url.QueryEscape(m.User),
+		url.QueryEscape(m.Password),
+		m.Account,
+		m.DB,
+		m.Schema,
+		m.Warehouse,
+	))
+}
+
+type APIInfo struct {
+	Endpoint string
+	Key      string
+}
+
+func dbInfo() (*DBInfo, error) {
 	f, err := os.Open("snowflake.json")
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 	d := json.NewDecoder(f)
-	var m map[string]string
+	var m DBInfo
 	if err := d.Decode(&m); err != nil {
 		return nil, err
 	}
-	return m, nil
+	return &m, nil
+}
+
+type engine struct {
+}
+
+func (e engine) Get(r sc.Reference) (*http.Response, error) {
+	key, err := ioutil.ReadFile("fred.txt")
+	if err != nil {
+		return nil, err
+	}
+	u := r.URI()
+	q := u.Query()
+	q.Set("api_key", strings.TrimSpace(string(key)))
+	u.RawQuery = q.Encode()
+	return http.Get(u.String())
 }
 
 func main() {
@@ -236,30 +271,43 @@ func main() {
 		return
 	}
 
-	db, err := OpenDB()
-	check(err)
-	check(db.Ping())
+	if true {
+		api, err := sc.NewAPICombinator(engine{})
+		check(err)
+		u, err := url.Parse("https://api.stlouisfed.org/fred/series/observations?series_id=GDP&file_type=xml&observation_start=1900-01-01&observation_end=2019-12-01")
+		check(err)
+		r, err := api.Get(sc.NewURI(u))
+		check(err)
+		fmt.Println(show(r))
+		return
+	}
 
-	c, err := sc.NewDatabaseCombinator(db)
-	check(err)
+	if false {
+		db, err := OpenDB()
+		check(err)
+		check(db.Ping())
 
-	info, err := dbInfo()
-	check(err)
-	var u url.URL
-	u.Scheme = "sql"
-	u.Path = "/myname"
-	v := make(url.Values)
-	v.Set("query", info["query"])
-	v.Set("format", "csv")
-	v.Set("interface", "string")
-	u.RawQuery = v.Encode()
+		c, err := sc.NewDatabaseCombinator(db)
+		check(err)
 
-	r := sc.NewURI(&u)
-	i, err := c.Get(r)
-	check(err)
-	fmt.Println(show(i))
+		info, err := dbInfo()
+		check(err)
+		var u url.URL
+		u.Scheme = "sql"
+		u.Path = "/myname"
+		v := make(url.Values)
+		v.Set("query", info.Query)
+		v.Set("format", "csv")
+		v.Set("interface", "string")
+		u.RawQuery = v.Encode()
 
-	return
+		r := sc.NewURI(&u)
+		i, err := c.Get(r)
+		check(err)
+		fmt.Println(show(i))
+
+		return
+	}
 
 	// -------------------------------------------------------
 

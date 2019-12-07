@@ -47,7 +47,11 @@ func (r Ref) URI() *url.URL {
 }
 
 func unimplemented(i interface{}, method string) error {
-	return fmt.Errorf("%T.%s unimplemented", i, method)
+	return fmt.Errorf("%T.%s unimplemented; %w", i, method, NotSupported)
+}
+
+func unsupported(i interface{}, method string) error {
+	return fmt.Errorf("%T.%s unsupported; %w", i, method, NotSupported)
 }
 
 // wraps not found error from various sources

@@ -192,13 +192,13 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 }
 
 func (dc DatabaseCombinator) Put(Reference, interface{}) error {
-	return fmt.Errorf("can't Put to sql combinator; %w", NotSupported)
+	return unsupported(dc, "Put")
 }
 
 func (dc DatabaseCombinator) Delete(Reference) error {
-	return fmt.Errorf("can't Delete from sql combinator; %w", NotSupported)
+	return unsupported(dc, "Delete")
 }
 
 func (dc DatabaseCombinator) Merge(Reference, interface{}) error {
-	return fmt.Errorf("can't Merge to sql combinator; %w", NotSupported)
+	return unsupported(dc, "Merge")
 }
