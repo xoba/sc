@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -16,7 +15,6 @@ import (
 	"path"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
@@ -145,8 +143,8 @@ func newMultiplexer(m map[string]sc.StorageCombinator) sc.StorageCombinator {
 	return c
 }
 
-func newLister(raw, appender sc.StorageCombinator, listRef sc.Reference) sc.StorageCombinator {
-	c, err := sc.NewListingCombinator(raw, appender, listRef)
+func newLister(raw sc.StorageCombinator, listRef sc.Reference) sc.StorageCombinator {
+	c, err := sc.NewListingCombinator(raw, listRef)
 	check(err)
 	return c
 }
@@ -164,11 +162,6 @@ func NewStorageCombinator(base string, listRef sc.Reference) (sc.StorageCombinat
 							path.Join(base, "fs"),
 						),
 					),
-				),
-			),
-			log(
-				newAppender(
-					path.Join(base, "append"),
 				),
 			),
 			listRef,
@@ -312,127 +305,6 @@ func main() {
 		return
 	}
 
-	// -------------------------------------------------------
-
-	listRef, err := sc.ParseRef(listPath)
-	check(err)
-
-	// our top-level storage combinator, which will be assembled from parts:
-	var store sc.StorageCombinator
-
-	{
-		store = sc.NewVersioning(newFilesystem(workingDir))
-		store = newLister(store, newAppender(merger), listRef)
-		store = sc.NewPassthrough("v", store)
-		r := sc.NewRef("test.txt")
-		check(store.Put(r, fmt.Sprintf("howdy at %v!", time.Now())))
-		i, err := store.Get(r)
-		check(err)
-		fmt.Printf("got: %s\n", show(i))
-		u, err := sc.ParseRef("test.txt#versions")
-		check(err)
-		list, err := store.Get(u)
-		check(err)
-		fmt.Printf("list:\n%s\n", show(list))
-		for _, v := range list.(sc.Versions) {
-			r, err := sc.ParseRef(fmt.Sprintf("test.txt?version=%d#versions", v.Version))
-			check(err)
-			i, err := store.Get(r)
-			check(err)
-			fmt.Printf("%s: %s\n", r, show(i))
-		}
-		return
-	}
-
-	// create either a pure disk filesystem or file+s3 multiplexed:
-	{
-		fs := sc.NewPassthrough("fs", newFilesystem(workingDir))
-		calculator := sc.NewProgrammatic(func(r sc.Reference) (interface{}, error) {
-			u := r.URI()
-			if q := u.Query(); len(q) > 0 {
-				return fmt.Sprintf("got sql query %q", q.Get("sql")), nil
-			}
-			var count int
-			for range u.String() {
-				count++
-			}
-			return fmt.Sprintf("%q has %d chars", u, count), nil
-		})
-		m := map[string]sc.StorageCombinator{
-			"":     fs,
-			"/":    fs,
-			"dir0": fs,
-			"calc": calculator,
-		}
-		if bucket != "" {
-			m["dir1"] = newS3(bucket, prefix)
-		}
-		store = newMultiplexer(m)
-	}
-
-	// add listing capability:
-	store = newLister(store, newAppender(merger), listRef)
-
-	store = sc.NewPassthrough("cache", sc.NewCache(store, newFilesystem(cacheDir)))
-
-	// a passthrough for fun:
-	store = sc.NewPassthrough("", store)
-
-	// test out the calculator:
-	for i := 0; i < 3; i++ {
-		r := sc.NewRef(fmt.Sprintf("/calc/%f", math.Pow(10, float64(i))))
-		i, err := store.Get(r)
-		check(err)
-		fmt.Println(show(i))
-	}
-
-	// play with a sql query concept:
-	{
-		fmt.Printf("gonna try a sql query\n")
-		u, err := url.Parse("/calc?sql=select * from mytable")
-		check(err)
-		i, err := store.Get(sc.NewURI(u))
-		check(err)
-		fmt.Println(show(i))
-	}
-
-	// put a bunch of stuff at various paths, and see if we can retrieve it
-	for j := 0; j < 2; j++ {
-		dir := fmt.Sprintf("/dir%d/sub", j)
-		for i := 0; i < 3; i++ {
-			r := sc.NewRef(path.Join(dir, fmt.Sprintf("test_%d_%d.txt", i, j)))
-			fmt.Println(r)
-			check(store.Put(r, fmt.Sprintf("howdy %d/%d!", i, j)))
-			buf, err := store.Get(r)
-			check(err)
-			fmt.Printf("got %q\n", show(buf))
-		}
-	}
-
-	// see if we can get a directory from filesystem combinator:
-	{
-		r := sc.NewRef("/dir0")
-		listing, err := store.Get(r)
-		if err == nil {
-			fmt.Print(show(listing))
-		} else {
-			fmt.Printf("can't get directory %s\n", r)
-		}
-	}
-
-	// see if we can traverse disk part of filesystem
-	const root = "/"
-	fmt.Printf("traversing %q as best we can\n", root)
-	if err := Traverse(store, root); err != nil {
-		fmt.Printf("can't traverse %q': %v\n", root, err)
-	}
-
-	// use the lister functionality to get a list of what we mutated
-	{
-		x, err := store.Get(listRef)
-		check(err)
-		fmt.Println(show(x))
-	}
 }
 
 func show(i interface{}) string {

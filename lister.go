@@ -9,23 +9,20 @@ import (
 
 type ListingCombinator struct {
 	raw           StorageCombinator // underlying combinator
-	appender      StorageCombinator // managing the listing
-	listPath      string            // path the list can be found under
-	listReference Reference         // reference to listPath
+	listReference Reference         // where the list can be found
 }
 
 // appender's merge method just appends to growing file
-func NewListingCombinator(raw, appender StorageCombinator, r Reference) (*ListingCombinator, error) {
+func NewListingCombinator(raw StorageCombinator, r Reference) (*ListingCombinator, error) {
 	return &ListingCombinator{
 		raw:           raw,
-		appender:      appender,
 		listReference: r,
 	}, nil
 }
 
 func (lc ListingCombinator) Get(r Reference) (interface{}, error) {
 	if r.URI().String() == lc.listReference.URI().String() {
-		return lc.appender.Get(r)
+		return lc.raw.Get(r)
 	}
 	return lc.raw.Get(r)
 }
@@ -48,7 +45,7 @@ func (lc ListingCombinator) update(r Reference, mode string) error {
 	if err := e.Encode(lr); err != nil {
 		return err
 	}
-	return lc.appender.Merge(lc.listReference, w.Bytes())
+	return lc.raw.Merge(lc.listReference, w.Bytes())
 }
 
 func (lc ListingCombinator) Put(r Reference, i interface{}) error {
