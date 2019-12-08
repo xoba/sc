@@ -13,10 +13,6 @@ func NewProgrammatic(f RefFunc) ProgrammaticCombinator {
 func (c ProgrammaticCombinator) Get(r Reference) (interface{}, error) {
 	return c.f(r)
 }
-
-func (c ProgrammaticCombinator) Find(p string) (Reference, error) {
-	return NewRef(p), nil
-}
 func (c ProgrammaticCombinator) Put(Reference, interface{}) error {
 	return unimplemented(c, "Put")
 }

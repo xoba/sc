@@ -36,9 +36,3 @@ func (mem Memory) Delete(r Reference) error {
 	delete(mem.m, key(r))
 	return nil
 }
-
-func (mem Memory) Find(p string) (Reference, error) {
-	r := NewRef(p)
-	r.u.Scheme = "memory"
-	return r, nil
-}

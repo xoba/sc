@@ -133,17 +133,6 @@ func (fs FileSystem) Delete(r Reference) error {
 	return os.RemoveAll(fs.path(r))
 }
 
-func (fs FileSystem) Find(q string) (Reference, error) {
-	p := fs.getPath(q)
-	fi, err := os.Stat(p)
-	if err != nil {
-		return nil, err
-	}
-	r := NewFileReference(fi)
-	r.Name = path.Clean("/" + q)
-	return r, nil
-}
-
 func (fs FileSystem) Merge(r Reference, i interface{}) error {
 	return unimplemented(fs, "Merge")
 }

@@ -79,7 +79,7 @@ func (fs S3KeyValue) parseS3URI(u *url.URL) (*S3Reference, error) {
 	} else {
 		s3ref.Bucket = fs.bucket
 	}
-	s3ref.Key = removeLeadingSlashes(u.Path)
+	s3ref.Key = path.Join(fs.prefix, removeLeadingSlashes(u.Path))
 	return &s3ref, nil
 
 }
@@ -108,6 +108,10 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 }
 
 func (fs S3KeyValue) Put(r Reference, i interface{}) error {
+	s3ref, err := fs.s3ref(r)
+	if err != nil {
+		return err
+	}
 	var rs io.ReadSeeker
 	cp := func(r io.Reader) error {
 		w := new(bytes.Buffer)
@@ -138,10 +142,6 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	default:
 		return fmt.Errorf("don't know how to handle object type %T", t)
 	}
-	s3ref, err := fs.s3ref(r)
-	if err != nil {
-		return err
-	}
 	poi := s3.PutObjectInput{
 		Bucket: aws.String(s3ref.Bucket),
 		Key:    aws.String(s3ref.Key),
@@ -154,7 +154,6 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 		poi.ACL = aws.String("public-read")
 	}
 	if _, err := fs.svc.PutObject(&poi); err != nil {
-		fmt.Printf("oops: %v\n", err)
 		return err
 	}
 	return nil
@@ -176,22 +175,4 @@ func (fs S3KeyValue) Delete(r Reference) error {
 		return err
 	}
 	return nil
-}
-
-func (fs S3KeyValue) Find(q string) (Reference, error) {
-	u, err := url.Parse(q)
-	if err != nil {
-		return nil, err
-	}
-	s3ref, err := fs.parseS3URI(u)
-	if err != nil {
-		return nil, err
-	}
-	if _, err := fs.svc.HeadObject(&s3.HeadObjectInput{
-		Bucket: aws.String(s3ref.Bucket),
-		Key:    aws.String(s3ref.Key),
-	}); err != nil {
-		return nil, err
-	}
-	return s3ref, nil
 }
