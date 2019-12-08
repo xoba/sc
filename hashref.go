@@ -11,6 +11,10 @@ type HashedRefs struct {
 	c StorageCombinator
 }
 
+func NewHashedRefs(c StorageCombinator) HashedRefs {
+	return HashedRefs{c: c}
+}
+
 func hr(r Reference) Reference {
 	h := md5.New()
 	fmt.Fprint(h, r.URI().String())
