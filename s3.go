@@ -109,6 +109,14 @@ func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
 
 func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 	var rs io.ReadSeeker
+	cp := func(r io.Reader) error {
+		w := new(bytes.Buffer)
+		if _, err := io.Copy(w, r); err != nil {
+			return err
+		}
+		rs = bytes.NewReader(w.Bytes())
+		return nil
+	}
 	switch t := i.(type) {
 	case string:
 		rs = strings.NewReader(t)
@@ -118,6 +126,15 @@ func (fs S3KeyValue) Put(r Reference, i interface{}) error {
 		rs = strings.NewReader(t.String())
 	case io.ReadSeeker:
 		rs = t
+	case io.Reader:
+		if err := cp(t); err != nil {
+			return err
+		}
+	case io.ReadCloser:
+		defer t.Close()
+		if err := cp(t); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("don't know how to handle object type %T", t)
 	}
