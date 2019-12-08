@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"math"
 	"net/http"
@@ -432,43 +431,10 @@ func main() {
 	}
 }
 
-// interprets and shows something we get from a storage combinator
 func show(i interface{}) string {
-	reader := func(r io.Reader) string {
-		w := new(bytes.Buffer)
-		if _, err := io.Copy(w, r); err != nil {
-			check(err)
-		}
-		return w.String()
-	}
-
-	switch t := i.(type) {
-	case []byte:
-		return string(t)
-	case string:
-		return t
-	case io.ReadCloser:
-		defer t.Close()
-		return reader(t)
-	case io.Reader:
-		return reader(t)
-	case []sc.FileReference:
-		w := new(bytes.Buffer)
-		e := json.NewEncoder(w)
-		for _, x := range t {
-			check(e.Encode(x))
-		}
-		return w.String()
-	case sc.Versions:
-		w := new(bytes.Buffer)
-		e := json.NewEncoder(w)
-		for _, v := range t {
-			check(e.Encode(v))
-		}
-		return w.String()
-	default:
-		return fmt.Sprintf("%v\n", t)
-	}
+	s, err := sc.Show(i)
+	check(err)
+	return s
 }
 
 func Traverse(store sc.StorageCombinator, p string) error {

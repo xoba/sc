@@ -1,10 +1,14 @@
 package sc
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
+	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -69,4 +73,49 @@ func wrapNotFound(r Reference, err error) error {
 		}
 	}
 	return err
+}
+
+// interprets and shows something we get from a storage combinator
+func Show(i interface{}) (string, error) {
+	reader := func(r io.Reader) (string, error) {
+		w := new(bytes.Buffer)
+		if _, err := io.Copy(w, r); err != nil {
+			return "", err
+		}
+		return w.String(), nil
+	}
+	encode := func(i interface{}) (string, error) {
+		t := reflect.TypeOf(i)
+		v := reflect.ValueOf(i)
+		w := new(bytes.Buffer)
+		e := json.NewEncoder(w)
+		switch t.Kind() {
+		case reflect.Slice, reflect.Array:
+			for j := 0; j < v.Len(); j++ {
+				if err := e.Encode(v.Index(j).Interface()); err != nil {
+					return "", err
+				}
+			}
+		default:
+			if err := e.Encode(i); err != nil {
+				return "", err
+			}
+		}
+		return w.String(), nil
+	}
+	switch t := i.(type) {
+	case []byte:
+		return string(t), nil
+	case string:
+		return t, nil
+	case io.ReadCloser:
+		defer t.Close()
+		return reader(t)
+	case io.Reader:
+		return reader(t)
+	case []interface{}, []FileReference, Versions:
+		return encode(t)
+	default:
+		return fmt.Sprint(t), nil
+	}
 }
