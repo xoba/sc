@@ -1,6 +1,7 @@
 package sc
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -102,37 +104,55 @@ func (fs FileSystem) Get(r Reference) (interface{}, error) {
 }
 
 func (fs FileSystem) Put(r Reference, i interface{}) error {
+	return fs.put(r, i, os.O_WRONLY|os.O_CREATE|os.O_TRUNC)
+}
+
+func (fs FileSystem) put(r Reference, i interface{}, flags int) error {
 	p := fs.path(r)
 	if err := mkdir(filepath.Dir(p)); err != nil {
 		return err
 	}
-	var buf []byte
-	switch t := i.(type) {
-	case []byte:
-		buf = t
-	case string:
-		buf = []byte(t)
-	case io.ReadCloser:
-		defer t.Close()
-		f, err := os.OpenFile(p, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.ModePerm)
+	write := func(reader io.Reader) error {
+		file, err := os.OpenFile(p, flags, 0666)
 		if err != nil {
 			return err
 		}
-		defer f.Close()
-		if _, err := io.Copy(f, t); err != nil {
+		defer file.Close()
+		if _, err := io.Copy(file, reader); err != nil {
 			return err
 		}
-		return f.Close()
-	default:
-		buf = []byte(fmt.Sprintf("%v", t))
+		return file.Close()
 	}
-	return ioutil.WriteFile(p, buf, os.ModePerm)
+	var reader io.Reader
+	close := func() error {
+		return nil
+	}
+	switch t := i.(type) {
+	case []byte:
+		reader = bytes.NewReader(t)
+	case string:
+		reader = strings.NewReader(t)
+	case io.Reader:
+		reader = t
+	case io.ReadCloser:
+		reader = t
+		close = func() error {
+			return t.Close()
+		}
+	default:
+		reader = strings.NewReader(fmt.Sprint(t))
+	}
+	if err := write(reader); err != nil {
+		return err
+	}
+	return close()
 }
 
 func (fs FileSystem) Delete(r Reference) error {
 	return os.RemoveAll(fs.path(r))
 }
 
+// appends to the file or creates it
 func (fs FileSystem) Merge(r Reference, i interface{}) error {
-	return unimplemented(fs, "Merge")
+	return fs.put(r, i, os.O_WRONLY|os.O_CREATE|os.O_APPEND)
 }
