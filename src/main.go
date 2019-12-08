@@ -256,7 +256,11 @@ func (e engine) Get(r sc.Reference) (*http.Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	u := r.URI()
+	// modify a copy of uri:
+	u, err := url.Parse(r.URI().String())
+	if err != nil {
+		return nil, err
+	}
 	q := u.Query()
 	q.Set("api_key", strings.TrimSpace(string(key)))
 	u.RawQuery = q.Encode()
