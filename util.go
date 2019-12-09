@@ -125,6 +125,7 @@ func Show(i interface{}) (string, error) {
 		v := reflect.ValueOf(i)
 		w := new(bytes.Buffer)
 		e := json.NewEncoder(w)
+		e.SetEscapeHTML(false)
 		switch t.Kind() {
 		case reflect.Slice, reflect.Array:
 			for j := 0; j < v.Len(); j++ {
