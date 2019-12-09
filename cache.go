@@ -24,24 +24,19 @@ func (self Cache) Get(r Reference) (interface{}, error) {
 }
 
 func (self Cache) Put(r Reference, i interface{}) error {
-	if err := self.c.Delete(r); err != nil {
-		return err
-	}
-	if err := self.u.Put(r, i); err != nil {
-		return err
-	}
-	tmpCopy, err := self.u.Get(r)
-	if err != nil {
-		return err
-	}
-	return self.c.Put(r, tmpCopy)
+	return self.update(r, i, self.u.Put)
 }
 
+// merges with underlying, but puts merged version to cache
 func (self Cache) Merge(r Reference, i interface{}) error {
+	return self.update(r, i, self.u.Merge)
+}
+
+func (self Cache) update(r Reference, i interface{}, mutator func(Reference, interface{}) error) error {
 	if err := self.c.Delete(r); err != nil {
 		return err
 	}
-	if err := self.u.Merge(r, i); err != nil {
+	if err := mutator(r, i); err != nil {
 		return err
 	}
 	tmpCopy, err := self.u.Get(r)
