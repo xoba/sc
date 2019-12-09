@@ -12,11 +12,11 @@ type ListingCombinator struct {
 	listReference Reference         // where the list can be found
 }
 
-// appender's merge method just appends to growing file
-func NewListingCombinator(raw StorageCombinator, r Reference) (*ListingCombinator, error) {
+// embedded combinator's merge method has to simply append
+func NewListingCombinator(raw StorageCombinator, listReference Reference) (*ListingCombinator, error) {
 	return &ListingCombinator{
 		raw:           raw,
-		listReference: r,
+		listReference: listReference,
 	}, nil
 }
 
@@ -34,6 +34,9 @@ type ListRecord struct {
 }
 
 func (lc ListingCombinator) update(r Reference, mode string) error {
+	if list := lc.listReference.URI().String(); r.URI().String() == list {
+		return fmt.Errorf("path conflict with listing: %s", list)
+	}
 	lr := ListRecord{
 		Time: time.Now(),
 		URI:  r.URI().String(),
@@ -49,9 +52,6 @@ func (lc ListingCombinator) update(r Reference, mode string) error {
 }
 
 func (lc ListingCombinator) Put(r Reference, i interface{}) error {
-	if list := lc.listReference.URI().String(); r.URI().String() == list {
-		return fmt.Errorf("path conflict with listing: %s", list)
-	}
 	if err := lc.update(r, "put"); err != nil {
 		return err
 	}
