@@ -46,6 +46,42 @@ func ParseRef(p string) (*Ref, error) {
 	}, nil
 }
 
+func RemoveFragment(r Reference) (Reference, error) {
+	return Remove(r, func(u *url.URL) error {
+		u.Fragment = ""
+		return nil
+	})
+}
+
+func RemoveQueryParameter(r Reference, key string) (Reference, error) {
+	return Remove(r, func(u *url.URL) error {
+		q := u.Query()
+		q.Set(key, "")
+		u.RawQuery = q.Encode()
+		return nil
+	})
+}
+
+func Remove(r Reference, mutator func(*url.URL) error) (Reference, error) {
+	r2, err := ParseRef(r.URI().String())
+	if err != nil {
+		return nil, err
+	}
+	u := r2.URI()
+	if err := mutator(u); err != nil {
+		return nil, err
+	}
+	return NewURI(u), nil
+}
+
+func RemoveQuery(r Reference) (Reference, error) {
+	return Remove(r, func(u *url.URL) error {
+		u.RawQuery = ""
+		return nil
+	})
+
+}
+
 func (r Ref) URI() *url.URL {
 	return r.u
 }

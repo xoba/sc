@@ -7,19 +7,25 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 )
 
+// usurps the uri fragment for versioning operations
 func NewVersioning(c StorageCombinator) *Versioning {
-	return &Versioning{c: c}
+	return &Versioning{
+		c: c,
+		p: regexp.MustCompile(`(versions)|(version)=([\d]+)`),
+	}
 }
 
 // adds versioning to an existing combinator
 type Versioning struct {
 	c StorageCombinator
+	p *regexp.Regexp
 }
 
 type VersionRecord struct {
@@ -99,41 +105,67 @@ func (v Versioning) load(r Reference) (Versions, error) {
 // unless there is also a "version" query parameter, then
 // that version is retrieved
 func (v Versioning) Get(r Reference) (interface{}, error) {
-	versions, err := v.load(r)
+	if err := v.checkReference(r); err != nil {
+		return nil, err
+	}
+	r2, err := RemoveFragment(r)
 	if err != nil {
 		return nil, err
+	}
+	versions, err := v.load(r2)
+	if err != nil {
+		return nil, err
+	}
+	if u := r.URI(); v.p.MatchString(u.Fragment) {
+		m := v.p.FindStringSubmatch(u.Fragment)
+		switch {
+		case m[1] == "versions":
+			return versions, nil
+		case m[2] == "version":
+			x, err := strconv.ParseInt(m[3], 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			vr, err := versions.Find(int(x))
+			if err != nil {
+				return nil, err
+			}
+			r, err := ParseRef(vr.TargetURI)
+			if err != nil {
+				return nil, err
+			}
+			return v.c.Get(r)
+		default:
+			return nil, fmt.Errorf("unrecognized uri fragment: %q", u.Fragment)
+		}
 	}
 	if len(versions) == 0 {
 		return nil, NotFound
 	}
-	if r.URI().Fragment != "versions" {
-		// return the latest version
-		r2, err := ParseRef(versions[len(versions)-1].TargetURI)
-		if err != nil {
-			return nil, err
-		}
-		return v.c.Get(r2)
+	// return the latest version
+	r3, err := ParseRef(versions[len(versions)-1].TargetURI)
+	if err != nil {
+		return nil, err
 	}
-	q := r.URI().Query()
-	if version := q.Get("version"); version != "" {
-		x, err := strconv.ParseInt(version, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		vr, err := versions.Find(int(x))
-		if err != nil {
-			return nil, err
-		}
-		r, err := ParseRef(vr.TargetURI)
-		if err != nil {
-			return nil, err
-		}
-		return v.c.Get(r)
+	return v.c.Get(r3)
+}
+
+func (v Versioning) checkReference(r Reference) error {
+	u := r.URI()
+	switch {
+	case v.p.MatchString(u.Fragment):
+		return nil
+	case u.Fragment != "":
+		return fmt.Errorf("versioning can't handle uri fragment %q", u.Fragment)
+	default:
+		return nil
 	}
-	return versions, nil
 }
 
 func (v Versioning) Put(r Reference, i interface{}) error {
+	if err := v.checkReference(r); err != nil {
+		return err
+	}
 	versions, err := v.load(r)
 	if err != nil && !errors.Is(err, NotFound) {
 		return err
@@ -167,14 +199,20 @@ func (versions Versions) Encode(w io.Writer) error {
 	return nil
 }
 
+// need to think about this: should actually add a "delete" version,
+// not delete it per se!!!
 func (v Versioning) Delete(r Reference) error {
-	return fmt.Errorf("unimplemented")
+	if err := v.checkReference(r); err != nil {
+		return err
+	}
 
-	// need to think about this: should actually add a "delete" version,
-	// not delete it per se!!!
-	return v.c.Delete(r)
+	return unimplemented(v, "Delete")
+
 }
 
 func (v Versioning) Merge(r Reference, i interface{}) error {
+	if err := v.checkReference(r); err != nil {
+		return err
+	}
 	return unimplemented(v, "Merge")
 }

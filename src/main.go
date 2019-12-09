@@ -267,7 +267,39 @@ func main() {
 		return
 	}
 
-	if true {
+	check(func() error {
+		const dir = "/tmp/sc_cache"
+		os.RemoveAll(dir)
+		fs, err := sc.NewFileSystem(dir)
+		if err != nil {
+			return err
+		}
+		target := sc.NewVersioning(sc.NewHashedRefs(fs))
+		r := sc.NewRef("test.txt")
+		check(target.Put(r, "howdy 1\n"))
+		check(target.Put(r, "howdy 2\n"))
+		i, err := target.Get(r)
+		check(err)
+		fmt.Println(show(i))
+		{
+			vr, err := sc.ParseRef("test.txt#version=2")
+			check(err)
+			version, err := target.Get(vr)
+			check(err)
+			fmt.Println("version:", show(version))
+		}
+		{
+			vr, err := sc.ParseRef("test.txt#versions")
+			check(err)
+			version, err := target.Get(vr)
+			check(err)
+			fmt.Println("versions:", show(version))
+		}
+		return nil
+	}())
+	return
+
+	if false {
 		api, err := sc.NewAPICombinator(engine{})
 		check(err)
 		u, err := url.Parse("https://api.stlouisfed.org/fred/series/observations?series_id=GDP&file_type=xml&observation_start=1900-01-01&observation_end=2019-12-01")
