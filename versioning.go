@@ -18,7 +18,7 @@ import (
 func NewVersioning(c StorageCombinator) *Versioning {
 	return &Versioning{
 		c: c,
-		p: regexp.MustCompile(`(versions)|(version)=([\d]+)`),
+		p: regexp.MustCompile(`^(versions)|(version)=([\d]+)$`),
 	}
 }
 
