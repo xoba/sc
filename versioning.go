@@ -35,11 +35,6 @@ type VersionRecord struct {
 	Time      time.Time
 }
 
-func (v VersionRecord) String() string {
-	buf, _ := json.Marshal(v)
-	return string(buf)
-}
-
 // assumed to be sorted in ascending version order
 type Versions []VersionRecord
 
@@ -65,6 +60,7 @@ func (v Versions) Max() (out int) {
 func hashRef(r Reference, v int) Reference {
 	h := md5.New()
 	e := json.NewEncoder(h)
+	e.SetEscapeHTML(false)
 	e.Encode(r.URI().String())
 	e.Encode(v)
 	e.Encode(`D6871E1B-4C52-423B-B526-1F2D82D1C996`)
