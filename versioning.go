@@ -201,7 +201,6 @@ func (v Versioning) Delete(r Reference) error {
 	if err := v.checkReference(r); err != nil {
 		return err
 	}
-
 	return unimplemented(v, "Delete")
 
 }

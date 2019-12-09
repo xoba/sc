@@ -7,9 +7,7 @@ type ReadOnly struct {
 }
 
 func NewReadOnly(c StorageCombinator) *ReadOnly {
-	return &ReadOnly{
-		c: c,
-	}
+	return &ReadOnly{c: c}
 }
 
 var ReadOnlyError = errors.New("read only")

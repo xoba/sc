@@ -13,11 +13,11 @@ type ListingCombinator struct {
 }
 
 // embedded combinator's merge method has to simply append
-func NewListingCombinator(raw StorageCombinator, listReference Reference) (*ListingCombinator, error) {
+func NewListingCombinator(raw StorageCombinator, listReference Reference) *ListingCombinator {
 	return &ListingCombinator{
 		raw:           raw,
 		listReference: listReference,
-	}, nil
+	}
 }
 
 func (lc ListingCombinator) Get(r Reference) (interface{}, error) {

@@ -7,10 +7,8 @@ import (
 
 // NewMultiplexer creates a switching storage combinator,
 // based on longest match to first path component
-func NewMultiplexer(m map[string]StorageCombinator) (*Multiplexer, error) {
-	return &Multiplexer{
-		m: m,
-	}, nil
+func NewMultiplexer(m map[string]StorageCombinator) *Multiplexer {
+	return &Multiplexer{m: m}
 }
 
 type Multiplexer struct {

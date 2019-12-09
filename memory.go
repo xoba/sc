@@ -1,7 +1,7 @@
 package sc
 
-func NewMemory() {
-
+func NewMemory() *Memory {
+	return &Memory{m: make(map[string]interface{})}
 }
 
 type Memory struct {

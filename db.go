@@ -15,8 +15,8 @@ type DatabaseCombinator struct {
 	db *sql.DB
 }
 
-func NewDatabaseCombinator(db *sql.DB) (*DatabaseCombinator, error) {
-	return &DatabaseCombinator{db: db}, nil
+func NewDatabaseCombinator(db *sql.DB) *DatabaseCombinator {
+	return &DatabaseCombinator{db: db}
 }
 
 func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {

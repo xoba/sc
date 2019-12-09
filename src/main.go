@@ -137,24 +137,12 @@ func newAppender(dir string) sc.StorageCombinator {
 	return c
 }
 
-func newMultiplexer(m map[string]sc.StorageCombinator) sc.StorageCombinator {
-	c, err := sc.NewMultiplexer(m)
-	check(err)
-	return c
-}
-
-func newLister(raw sc.StorageCombinator, listRef sc.Reference) sc.StorageCombinator {
-	c, err := sc.NewListingCombinator(raw, listRef)
-	check(err)
-	return c
-}
-
 func NewStorageCombinator(base string, listRef sc.Reference) (sc.StorageCombinator, error) {
 	log := func(c sc.StorageCombinator) sc.StorageCombinator {
 		return sc.NewPassthrough(fmt.Sprintf("%T", c), c)
 	}
 	store := log(
-		newLister(
+		sc.NewListingCombinator(
 			log(
 				sc.NewVersioning(
 					log(
@@ -171,14 +159,11 @@ func NewStorageCombinator(base string, listRef sc.Reference) (sc.StorageCombinat
 }
 
 func appenderTest() {
-	a, err := sc.NewAppender(newFilesystem("diskstore"))
-	var c sc.StorageCombinator
-	c = a
+	c := sc.NewAppender(newFilesystem("diskstore"))
 	check(c.Put(sc.NewRef("a.txt"), "hi there A\n"))
 	check(c.Put(sc.NewRef("b.txt"), "hi there B\n"))
 	check(c.Put(sc.NewRef("c.txt"), "hi there C\n"))
 	check(c.Merge(sc.NewRef("a.txt"), "hello again!\n"))
-	check(err)
 }
 
 const (
@@ -300,8 +285,7 @@ func main() {
 	return
 
 	if false {
-		api, err := sc.NewAPICombinator(engine{})
-		check(err)
+		api := sc.NewAPICombinator(engine{})
 		u, err := url.Parse("https://api.stlouisfed.org/fred/series/observations?series_id=GDP&file_type=xml&observation_start=1900-01-01&observation_end=2019-12-01")
 		check(err)
 		r, err := api.Get(sc.NewURI(u))
@@ -315,8 +299,7 @@ func main() {
 		check(err)
 		check(db.Ping())
 
-		c, err := sc.NewDatabaseCombinator(db)
-		check(err)
+		c := sc.NewDatabaseCombinator(db)
 
 		info, err := dbInfo()
 		check(err)

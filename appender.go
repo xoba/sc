@@ -11,11 +11,8 @@ type Appender struct {
 	c StorageCombinator
 }
 
-func NewAppender(c StorageCombinator) (*Appender, error) {
-	a := Appender{
-		c: c,
-	}
-	return &a, nil
+func NewAppender(c StorageCombinator) *Appender {
+	return &Appender{c: c}
 }
 
 func (a Appender) Get(r Reference) (interface{}, error) {

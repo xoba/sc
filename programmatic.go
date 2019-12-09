@@ -6,8 +6,8 @@ type ProgrammaticCombinator struct {
 
 type RefFunc func(Reference) (interface{}, error)
 
-func NewProgrammatic(f RefFunc) ProgrammaticCombinator {
-	return ProgrammaticCombinator{f: f}
+func NewProgrammatic(f RefFunc) *ProgrammaticCombinator {
+	return &ProgrammaticCombinator{f: f}
 }
 
 func (c ProgrammaticCombinator) Get(r Reference) (interface{}, error) {

@@ -15,8 +15,8 @@ type APIEngine interface {
 	Get(r Reference) (*http.Response, error)
 }
 
-func NewAPICombinator(e APIEngine) (*APICombinator, error) {
-	return &APICombinator{e: e}, nil
+func NewAPICombinator(e APIEngine) *APICombinator {
+	return &APICombinator{e: e}
 }
 
 func (a APICombinator) Get(r Reference) (interface{}, error) {
