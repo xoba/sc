@@ -7,6 +7,7 @@ import (
 	"io"
 	"path"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -33,6 +34,9 @@ const MaxKeys = 10
 func NewS3Collection(bucket, prefix string, ref Reference, svc *s3.S3) (*S3Collection, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
+	}
+	if strings.HasPrefix(prefix, "/") {
+		return nil, fmt.Errorf("prefix can't start with '/'")
 	}
 	u := ref.URI()
 	if u.RawQuery != "" {
@@ -132,7 +136,11 @@ func (c S3Collection) Get(r Reference) (interface{}, error) {
 			return nil, err
 		}
 	}
-	return sorted, nil
+	var out []interface{}
+	for _, x := range sorted {
+		out = append(out, x.Payload)
+	}
+	return out, nil
 }
 
 func (c S3Collection) consolidate(keys []string, records []S3Record) error {

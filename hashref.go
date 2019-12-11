@@ -15,7 +15,7 @@ func NewHashedRefs(c StorageCombinator) HashedRefs {
 	return HashedRefs{c: c}
 }
 
-func hr(r Reference) Reference {
+func hashedReference(r Reference) Reference {
 	h := md5.New()
 	fmt.Fprint(h, r.URI().String())
 	var u url.URL
@@ -25,17 +25,17 @@ func hr(r Reference) Reference {
 }
 
 func (h HashedRefs) Get(r Reference) (interface{}, error) {
-	return h.c.Get(hr(r))
+	return h.c.Get(hashedReference(r))
 }
 
 func (h HashedRefs) Put(r Reference, i interface{}) error {
-	return h.c.Put(hr(r), i)
+	return h.c.Put(hashedReference(r), i)
 }
 
 func (h HashedRefs) Delete(r Reference) error {
-	return h.c.Delete(hr(r))
+	return h.c.Delete(hashedReference(r))
 }
 
 func (h HashedRefs) Merge(r Reference, i interface{}) error {
-	return h.c.Merge(hr(r), i)
+	return h.c.Merge(hashedReference(r), i)
 }

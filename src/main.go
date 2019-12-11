@@ -20,6 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kms"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/blang/semver"
+	"github.com/google/uuid"
 	_ "github.com/snowflakedb/gosnowflake"
 	"github.com/xoba/sc"
 )
@@ -251,6 +252,57 @@ func main() {
 		check(RunRetag())
 		return
 	}
+
+	check(func() error {
+
+		p, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
+		if err != nil {
+			return err
+		}
+
+		storage, err := sc.NewFileSystem("logging/fs")
+		if err != nil {
+			return err
+		}
+		listRef := sc.NewRef("/logs")
+		collection, err := sc.NewS3Collection(bucket, "dir8", listRef, s3.New(p))
+		if err != nil {
+			return err
+		}
+		logger := sc.NewLoggingCombinator(storage, collection, listRef)
+
+		{
+			i, err := logger.Get(sc.NewRef("a"))
+			if err != nil {
+				return err
+			}
+			fmt.Println(show(i))
+		}
+
+		list := func() error {
+			i, err := logger.Get(listRef)
+			if err != nil {
+				return err
+			}
+			fmt.Println(show(i))
+			return nil
+		}
+
+		if err := list(); err != nil {
+			return err
+		}
+		for i := 0; i < 10; i++ {
+			check(logger.Put(sc.NewRef(fmt.Sprintf("item-%d", i)), uuid.New().String()))
+		}
+		if err := list(); err != nil {
+			return err
+		}
+
+		return nil
+	}())
+	return
 
 	check(func() error {
 		if bucket == "" {
