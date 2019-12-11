@@ -150,7 +150,7 @@ func Show(i interface{}) (string, error) {
 		return reader(t)
 	case io.Reader:
 		return reader(t)
-	case []interface{}, []FileReference, Versions:
+	case []interface{}, []FileReference, Versions, []S3Record:
 		return encode(t)
 	default:
 		return fmt.Sprint(t), nil

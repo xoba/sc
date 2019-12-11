@@ -253,6 +253,38 @@ func main() {
 	}
 
 	check(func() error {
+		if bucket == "" {
+			return fmt.Errorf("needs bucket")
+		}
+		p, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
+		if err != nil {
+			return err
+		}
+		ref := sc.NewRef("/collection")
+		c, err := sc.NewS3Collection(bucket, "dir7", ref, s3.New(p))
+		if err != nil {
+			return err
+		}
+		payload := map[string]interface{}{
+			"test":  123,
+			"bogus": []interface{}{"hi!", 4, 5, 6},
+		}
+		if err := c.Merge(ref, payload); err != nil {
+			return err
+		}
+		i, err := c.Get(ref)
+		if err != nil {
+			return err
+		}
+		fmt.Println(show(i))
+		return nil
+	}())
+
+	return
+
+	check(func() error {
 		const dir = "/tmp/sc_cache"
 		os.RemoveAll(dir)
 		fs, err := sc.NewFileSystem(dir)
