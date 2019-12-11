@@ -19,7 +19,7 @@ type S3Collection struct {
 	bucket string
 	prefix string
 	svc    *s3.S3
-	ref    string
+	ref    Reference
 }
 
 type S3Record struct {
@@ -28,22 +28,45 @@ type S3Record struct {
 	Payload   interface{}
 }
 
-const MaxKeys = 30
+const MaxKeys = 10
 
 func NewS3Collection(bucket, prefix string, ref Reference, svc *s3.S3) (*S3Collection, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
 	}
+	u := ref.URI()
+	if u.RawQuery != "" {
+		return nil, fmt.Errorf("can't have query")
+	}
+	if u.Fragment != "" {
+		return nil, fmt.Errorf("can't have fragment")
+	}
+	if u.User != nil {
+		return nil, fmt.Errorf("can't have user")
+	}
 	return &S3Collection{
 		bucket: bucket,
 		prefix: prefix,
 		svc:    svc,
-		ref:    ref.URI().String(),
+		ref:    ref,
 	}, nil
 }
 
+func (c S3Collection) refMatches(r Reference) bool {
+	norm := func(r Reference) string {
+		u := *(r.URI())
+		u.Fragment = ""
+		u.RawQuery = ""
+		u.User = nil
+		return u.String()
+	}
+	return norm(c.ref) == norm(r)
+}
+
+// think about query "after=isotime" or before="isotime" for only those ones,
+// or fragment "count" for just the count
 func (c S3Collection) Get(r Reference) (interface{}, error) {
-	if r.URI().String() != c.ref {
+	if !c.refMatches(r) {
 		return nil, NotFound
 	}
 	load := func(key string) ([]S3Record, error) {
@@ -149,7 +172,7 @@ func serialize(recs ...S3Record) ([]byte, error) {
 }
 
 func (c S3Collection) Merge(r Reference, i interface{}) error {
-	if r.URI().String() != c.ref {
+	if !c.refMatches(r) {
 		return NotFound
 	}
 	s3r := S3Record{
