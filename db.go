@@ -19,6 +19,12 @@ func NewDatabaseCombinator(db *sql.DB) *DatabaseCombinator {
 	return &DatabaseCombinator{db: db}
 }
 
+// query parameters:
+// query: the query (required)
+// format: csv or json (defaults to csv)
+// na: the "null" string, defaults to na
+// interface: string/reader/bytes, defaults to bytes
+// header: true or false, defaults to true, whether to output a header row (metadata)
 func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 	proc := func(key string, required bool, defaultValue string) (string, error) {
 		v := strings.TrimSpace(r.URI().Query().Get(key))
@@ -43,6 +49,14 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		return nil, err
 	}
 	outputType, err := proc("interface", false, "bytes")
+	if err != nil {
+		return nil, err
+	}
+	showHeader, err := proc("header", false, "true")
+	if err != nil {
+		return nil, err
+	}
+	showHeaderBool, err := strconv.ParseBool(showHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -130,8 +144,10 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		default:
 			return nil, fmt.Errorf("unhandled format: %q", format)
 		}
-		if err := writer(header); err != nil {
-			return nil, err
+		if showHeaderBool {
+			if err := writer(header); err != nil {
+				return nil, err
+			}
 		}
 	}
 	for rows.Next() {
@@ -181,8 +197,10 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		return w.String(), nil
 	case "reader":
 		return w, nil
-	default:
+	case "bytes":
 		return w.Bytes(), nil
+	default:
+		return nil, fmt.Errorf("unrecognized output type: %q", outputType)
 	}
 }
 
