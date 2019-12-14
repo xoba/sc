@@ -2,6 +2,7 @@ package sc
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -143,40 +144,62 @@ func (c S3Collection) Get(r Reference) (interface{}, error) {
 	return out, nil
 }
 
-func (c S3Collection) consolidate(keys []string, records []S3Record) error {
-	buf, err := serialize(records...)
-	if err != nil {
-		return err
-	}
-	id := uuid.New().String()
-	if _, err := c.svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(c.bucket),
-		Key:    aws.String(path.Join(c.prefix, id)),
-		Body:   bytes.NewReader(buf),
-	}); err != nil {
-		return err
-	}
-	for _, k := range keys {
-		if _, err := c.svc.DeleteObject(&s3.DeleteObjectInput{
-			Bucket: aws.String(c.bucket),
-			Key:    aws.String(k),
-		}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func serialize(recs ...S3Record) ([]byte, error) {
 	w := new(bytes.Buffer)
-	e := json.NewEncoder(w)
+	gz := gzip.NewWriter(w)
+	e := json.NewEncoder(gz)
 	e.SetEscapeHTML(false)
 	for _, r := range recs {
 		if err := e.Encode(r); err != nil {
 			return nil, err
 		}
 	}
+	if err := gz.Close(); err != nil {
+		return nil, err
+	}
 	return w.Bytes(), nil
+}
+
+func (c S3Collection) store(recs ...S3Record) error {
+	if len(recs) == 0 {
+		return fmt.Errorf("nothing to store")
+	}
+	buf, err := serialize(recs...)
+	if err != nil {
+		return err
+	}
+	if _, err := c.svc.PutObject(&s3.PutObjectInput{
+		Bucket:          aws.String(c.bucket),
+		Key:             aws.String(path.Join(c.prefix, uuid.New().String()) + ".json.gz"),
+		Body:            bytes.NewReader(buf),
+		ContentType:     aws.String("application/json"),
+		ContentEncoding: aws.String("gzip"),
+	}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c S3Collection) consolidate(keys []string, records []S3Record) error {
+	if err := c.store(records...); err != nil {
+		return err
+	}
+	delete := &s3.Delete{
+		Quiet: aws.Bool(true),
+	}
+	doi := &s3.DeleteObjectsInput{
+		Bucket: aws.String(c.bucket),
+		Delete: delete,
+	}
+	for _, k := range keys {
+		delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
+			Key: aws.String(k),
+		})
+	}
+	if _, err := c.svc.DeleteObjects(doi); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c S3Collection) Merge(r Reference, i interface{}) error {
@@ -188,15 +211,7 @@ func (c S3Collection) Merge(r Reference, i interface{}) error {
 		Timestamp: time.Now().UTC(),
 		Payload:   i,
 	}
-	buf, err := serialize(s3r)
-	if err != nil {
-		return err
-	}
-	if _, err := c.svc.PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(c.bucket),
-		Key:    aws.String(path.Join(c.prefix, s3r.ID)),
-		Body:   bytes.NewReader(buf),
-	}); err != nil {
+	if err := c.store(s3r); err != nil {
 		return err
 	}
 	return nil

@@ -12,6 +12,7 @@ type LoggingCombinator struct {
 	listRef Reference
 }
 
+// logs get/put/merge/delete calls
 func NewLoggingCombinator(storage, list StorageCombinator, listRef Reference) *LoggingCombinator {
 	return &LoggingCombinator{
 		storage: storage,
@@ -28,7 +29,7 @@ type LogRecord struct {
 	Timestamp time.Time
 }
 
-func newLR(method string, source Reference) (LogRecord, Reference) {
+func newLogRecord(method string, source Reference) (LogRecord, Reference) {
 	target := hashedReference(source)
 	record := LogRecord{
 		ID:        uuid.New().String(),
@@ -51,7 +52,7 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 	if r.URI().String() == c.listRef.URI().String() {
 		return c.list.Get(c.listRef)
 	}
-	record, target := newLR("get", r)
+	record, target := newLogRecord("get", r)
 	i, err := c.storage.Get(target)
 	if err != nil {
 		return nil, err
@@ -65,7 +66,7 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 type mutatorFunc func(Reference, interface{}) error
 
 func (c LoggingCombinator) update(r Reference, i interface{}, method string, mutator mutatorFunc) error {
-	record, target := newLR(method, r)
+	record, target := newLogRecord(method, r)
 	if err := mutator(target, i); err != nil {
 		return err
 	}

@@ -267,11 +267,15 @@ func main() {
 			return err
 		}
 		listRef := sc.NewRef("/logs")
-		collection, err := sc.NewS3Collection(bucket, "dir8", listRef, s3.New(p))
+		collection, err := sc.NewS3Collection(bucket, "dir9", listRef, s3.New(p))
 		if err != nil {
 			return err
 		}
 		logger := sc.NewLoggingCombinator(storage, collection, listRef)
+
+		if err := logger.Put(sc.NewRef("a"), "howdy123"); err != nil {
+			return err
+		}
 
 		{
 			i, err := logger.Get(sc.NewRef("a"))
@@ -280,6 +284,7 @@ func main() {
 			}
 			fmt.Println(show(i))
 		}
+		return nil
 
 		list := func() error {
 			i, err := logger.Get(listRef)

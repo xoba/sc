@@ -3,7 +3,6 @@ package sc
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 	"net/url"
 )
 
@@ -15,12 +14,14 @@ func NewHashedRefs(c StorageCombinator) HashedRefs {
 	return HashedRefs{c: c}
 }
 
+// converts a reference into an opaque hashed reference
 func hashedReference(r Reference) Reference {
 	h := md5.New()
-	fmt.Fprint(h, r.URI().String())
+	h.Write([]byte(`EAE18B82-F047-4913-BFE7-CF5B9E3B35AB`))
+	h.Write([]byte(r.URI().String()))
 	var u url.URL
 	u.Scheme = "md5"
-	u.Path = hex.EncodeToString(h.Sum(nil))
+	u.Opaque = hex.EncodeToString(h.Sum(nil))
 	return NewURI(&u)
 }
 
