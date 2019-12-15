@@ -13,7 +13,7 @@ func TestAppender(t *testing.T) {
 	check(err)
 	defer os.RemoveAll(dir)
 	fmt.Println(dir)
-	ac, err := NewAppendingCombinator(dir, 0644)
+	ac, err := NewFileAppender(dir)
 	check(err)
 	r1 := NewRef("a")
 	const put = "howdy\n"
