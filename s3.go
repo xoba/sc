@@ -68,18 +68,25 @@ func (fs S3KeyValue) s3ref(r Reference) (*S3Reference, error) {
 	case *S3Reference:
 		return t, nil
 	default:
-		return fs.parseS3URI(r.URI())
+		return fs.parseS3Reference(r)
 	}
 }
 
-func (fs S3KeyValue) parseS3URI(u *url.URL) (*S3Reference, error) {
+func (fs S3KeyValue) parseS3Reference(r Reference) (*S3Reference, error) {
+	u := r.URI()
 	var s3ref S3Reference
 	if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
 		s3ref.Bucket = u.Host
 	} else {
 		s3ref.Bucket = fs.bucket
 	}
-	s3ref.Key = path.Join(fs.prefix, removeLeadingSlashes(u.Path))
+	var key string
+	if u.Path == "" {
+		key = hashedReference(r).URI().String()
+	} else {
+		key = removeLeadingSlashes(u.Path)
+	}
+	s3ref.Key = path.Join(fs.prefix, key)
 	return &s3ref, nil
 
 }
