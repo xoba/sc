@@ -254,6 +254,36 @@ func main() {
 	}
 
 	check(func() error {
+		p, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
+		if err != nil {
+			return err
+		}
+		listRef := sc.NewRef("/logs")
+		c, err := sc.NewS3Collection(bucket, "testing", listRef, s3.New(p))
+		if err != nil {
+			return err
+		}
+		i, err := c.Get(listRef)
+		if err != nil {
+			return err
+		}
+		list, ok := i.([]interface{})
+		if !ok {
+			return fmt.Errorf("bad type: %T", i)
+		}
+		var n int
+		for _, x := range list {
+			fmt.Println(x)
+			n++
+		}
+		fmt.Printf("%d records\n", n)
+		return nil
+	}())
+	return
+
+	check(func() error {
 
 		p, err := session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
