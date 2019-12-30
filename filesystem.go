@@ -17,7 +17,7 @@ import (
 
 // NewFileSystem creates a new filesystem storage combinator with
 // given scheme, mountpoint, and default file mode
-// just uses the uri's path to map to underlying fule system
+// just uses the uri's path to map to underlying file system
 // if no path, then hashes the uri string to a path
 func NewFileSystem(mount string) (*FileSystem, error) {
 	mount = filepath.Clean(mount)
