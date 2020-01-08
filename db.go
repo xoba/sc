@@ -52,7 +52,12 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	showHeader, err := proc("header", false, "true")
+	var defaultShowHeader bool
+	if format == "csv" {
+		// by default, only show header for csv, not json format
+		defaultShowHeader = true
+	}
+	showHeader, err := proc("header", false, strconv.FormatBool(defaultShowHeader))
 	if err != nil {
 		return nil, err
 	}
