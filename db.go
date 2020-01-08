@@ -89,11 +89,19 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		case "Time":
 			f = &sql.NullTime{}
 		default:
-			return nil, fmt.Errorf("unhandled scan type %q for col %q of type %q",
-				t,
-				c.Name(),
-				c.DatabaseTypeName(),
-			)
+			switch name := strings.ToLower(c.DatabaseTypeName()); name {
+			case "decimal":
+				f = &sql.NullFloat64{}
+			case "varbinary", "uniqueidentifier":
+				var b []byte
+				f = &b
+			default:
+				return nil, fmt.Errorf("unhandled scan type %q for col %q of type %q",
+					t,
+					c.Name(),
+					c.DatabaseTypeName(),
+				)
+			}
 		}
 		row = append(row, f)
 	}
