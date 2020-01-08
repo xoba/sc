@@ -15,9 +15,9 @@ import (
 )
 
 type S3KeyValue struct {
-	bucket, prefix   string
-	returnReadCloser bool
-	svc              *s3.S3
+	defaultBucket, prefix string
+	returnReadCloser      bool
+	svc                   *s3.S3
 }
 
 type S3Reference struct {
@@ -38,12 +38,12 @@ func (o S3Reference) String() string {
 	return string(buf)
 }
 
-func NewS3KeyValue(bucket, prefix string, returnReadCloser bool, svc *s3.S3) (*S3KeyValue, error) {
-	if bucket == "" {
+func NewS3KeyValue(defaultBucket, prefix string, returnReadCloser bool, svc *s3.S3) (*S3KeyValue, error) {
+	if defaultBucket == "" {
 		return nil, fmt.Errorf("needs bucket")
 	}
 	return &S3KeyValue{
-		bucket:           bucket,
+		defaultBucket:    defaultBucket,
 		prefix:           prefix,
 		returnReadCloser: returnReadCloser,
 		svc:              svc,
@@ -78,7 +78,7 @@ func (fs S3KeyValue) parseS3Reference(r Reference) (*S3Reference, error) {
 	if strings.ToLower(u.Scheme) == "s3" && u.Host != "" {
 		s3ref.Bucket = u.Host
 	} else {
-		s3ref.Bucket = fs.bucket
+		s3ref.Bucket = fs.defaultBucket
 	}
 	var key string
 	if u.Path == "" {
