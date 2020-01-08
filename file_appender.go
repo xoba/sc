@@ -34,7 +34,7 @@ func (ac AppendingCombinator) file(r Reference) string {
 
 func (ac AppendingCombinator) Find(p string) (Reference, error) {
 	r := NewRef(p)
-	r.u.Scheme = "merger"
+	r.uri.Scheme = "merger"
 	return r, nil
 }
 

@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -16,33 +17,36 @@ import (
 
 // a simple reference type
 type Ref struct {
-	u *url.URL
+	uri *url.URL
 }
 
 func (r Ref) String() string {
-	return r.u.String()
+	return r.uri.String()
 }
 
 func NewRef(p string) Ref {
 	var r Ref
-	r.u = &url.URL{}
-	r.u.Path = p
+	r.uri = &url.URL{}
+	r.uri.Path = p
 	return r
 }
 
 func NewURI(u *url.URL) Ref {
 	return Ref{
-		u: u,
+		uri: u,
 	}
 }
 
 func ParseRef(p string) (*Ref, error) {
+	if strings.TrimSpace(p) == "" {
+		return nil, errors.New("empty uri")
+	}
 	u, err := url.Parse(p)
 	if err != nil {
 		return nil, err
 	}
 	return &Ref{
-		u: u,
+		uri: u,
 	}, nil
 }
 
@@ -83,7 +87,7 @@ func RemoveQuery(r Reference) (Reference, error) {
 }
 
 func (r Ref) URI() *url.URL {
-	return r.u
+	return r.uri
 }
 
 func unimplemented(i interface{}, method string) error {
