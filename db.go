@@ -92,7 +92,7 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 			switch name := strings.ToLower(c.DatabaseTypeName()); name {
 			case "decimal":
 				f = &sql.NullFloat64{}
-			case "varbinary", "uniqueidentifier":
+			case "varbinary", "uniqueidentifier", "image":
 				var b []byte
 				f = &b
 			default:
