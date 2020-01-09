@@ -8,8 +8,8 @@ type Deferred struct {
 	lock    sync.Locker
 }
 
-func NewDeferred(factory func() (StorageCombinator, error)) Deferred {
-	return Deferred{
+func NewDeferred(factory func() (StorageCombinator, error)) *Deferred {
+	return &Deferred{
 		factory: factory,
 		lock:    new(sync.Mutex),
 	}
