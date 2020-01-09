@@ -195,6 +195,8 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 				if t.Valid {
 					v = t.Time
 				}
+			case *[]byte:
+				v = t
 			default:
 				return nil, fmt.Errorf("unhandled scan type: %T", t)
 			}
