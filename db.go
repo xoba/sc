@@ -3,6 +3,7 @@ package sc
 import (
 	"bytes"
 	"database/sql"
+	"encoding/base64"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -136,6 +137,8 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 							x = strconv.FormatBool(t)
 						case time.Time:
 							x = t.UTC().Format("2006-01-02T15:04:05.000Z")
+						case *[]byte:
+							x = base64.StdEncoding.EncodeToString(*t)
 						default:
 							return fmt.Errorf("unhandled format type: %T", t)
 						}
