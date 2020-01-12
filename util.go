@@ -115,9 +115,32 @@ func wrapNotFound(r Reference, err error) error {
 	return err
 }
 
+func Blob(i interface{}) ([]byte, error) {
+	read := func(r io.Reader) ([]byte, error) {
+		w := new(bytes.Buffer)
+		if _, err := io.Copy(w, r); err != nil {
+			return nil, err
+		}
+		return w.Bytes(), nil
+	}
+	switch t := i.(type) {
+	case []byte:
+		return t, nil
+	case string:
+		return []byte(t), nil
+	case io.ReadCloser:
+		defer t.Close()
+		return read(t)
+	case io.Reader:
+		return read(t)
+	default:
+		return nil, fmt.Errorf("can't handle type %T", t)
+	}
+}
+
 // interprets and shows something we get from a storage combinator
 func Show(i interface{}) (string, error) {
-	reader := func(r io.Reader) (string, error) {
+	read := func(r io.Reader) (string, error) {
 		w := new(bytes.Buffer)
 		if _, err := io.Copy(w, r); err != nil {
 			return "", err
@@ -151,9 +174,9 @@ func Show(i interface{}) (string, error) {
 		return t, nil
 	case io.ReadCloser:
 		defer t.Close()
-		return reader(t)
+		return read(t)
 	case io.Reader:
-		return reader(t)
+		return read(t)
 	case []interface{}, []FileReference, Versions, []S3Record:
 		return encode(t)
 	default:
