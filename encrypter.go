@@ -52,7 +52,7 @@ func (e Encrypter) Get(r Reference) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	enc, err := resolve(i)
+	enc, err := Blob(i)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +76,7 @@ func (e Encrypter) Merge(r Reference, i interface{}) error {
 }
 
 func (e Encrypter) update(r Reference, i interface{}, f func(Reference, interface{}) error) error {
-	buf, err := resolve(i)
+	buf, err := Blob(i)
 	if err != nil {
 		return err
 	}
@@ -85,35 +85,6 @@ func (e Encrypter) update(r Reference, i interface{}, f func(Reference, interfac
 		return err
 	}
 	return f(r, enc)
-}
-
-func resolve(i interface{}) ([]byte, error) {
-	cp := func(r io.Reader) ([]byte, error) {
-		w := new(bytes.Buffer)
-		if _, err := io.Copy(w, r); err != nil {
-			return nil, err
-		}
-		return w.Bytes(), nil
-	}
-	switch t := i.(type) {
-	case []byte:
-		return t, nil
-	case string:
-		return []byte(t), nil
-	case io.Reader:
-		return cp(t)
-	case io.ReadCloser:
-		x, err := cp(t)
-		if err != nil {
-			return nil, err
-		}
-		if err := t.Close(); err != nil {
-			return nil, err
-		}
-		return x, nil
-	default:
-		return nil, fmt.Errorf("unhandled type: %T", t)
-	}
 }
 
 func (e Encrypter) encrypt(data []byte) ([]byte, error) {
