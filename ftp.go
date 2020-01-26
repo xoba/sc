@@ -54,8 +54,8 @@ func (f FTPCombinator) Get(r Reference) (interface{}, error) {
 		p = p[1:]
 	}
 	type listing struct {
-		Size int64
 		Name string
+		Size int64
 	}
 	list := func(dir string) (interface{}, error) {
 		w := new(bytes.Buffer)
