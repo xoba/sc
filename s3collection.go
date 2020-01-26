@@ -32,6 +32,7 @@ type S3Record struct {
 
 const MaxKeys = 10
 
+// ref is the one single valid reference for Get and Merge methods
 func NewS3Collection(bucket, prefix string, ref Reference, svc *s3.S3) (*S3Collection, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
