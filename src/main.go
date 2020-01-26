@@ -25,13 +25,14 @@ import (
 	"github.com/xoba/sc"
 )
 
-var bucket, user, host, passwordVar string
+var bucket, user, host, passwordVar, ftpFile string
 var retag bool
 
 func init() {
 	flag.StringVar(&bucket, "b", "", "bucket to use for s3, or skip s3 altogether if blank")
 	flag.StringVar(&host, "h", "", "ftp host")
 	flag.StringVar(&user, "u", "", "ftp user")
+	flag.StringVar(&ftpFile, "f", "", "the ftp file to Get")
 	flag.StringVar(&passwordVar, "p", "FTP_PASSWORD", "ftp password environment variable")
 	flag.BoolVar(&retag, "tag", false, "re-tag with next patch version")
 	flag.Parse()
@@ -256,8 +257,13 @@ func main() {
 		if password == "" {
 			panic("needs password")
 		}
-		_, err := sc.NewFTPCombinator(host, user, password)
+		ftp, err := sc.NewFTPCombinator(host, user, password)
 		check(err)
+		r, err := sc.ParseRef("ftp:///" + ftpFile)
+		check(err)
+		i, err := ftp.Get(r)
+		check(err)
+		fmt.Println(sc.Show(i))
 		return
 	}
 
