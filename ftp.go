@@ -22,7 +22,7 @@ func NewFTPCombinator(host, user, password string) (*FTPCombinator, error) {
 		Auth: []ssh.AuthMethod{
 			ssh.Password(password),
 		},
-		//HostKeyCallback: ssh.FixedHostKey(hostKey),
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 	conn, err := ssh.Dial("tcp", fmt.Sprintf("%s:22", host), config)
 	if err != nil {
