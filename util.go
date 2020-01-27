@@ -115,11 +115,32 @@ func wrapNotFound(r Reference, err error) error {
 	return err
 }
 
+// interprets as bytes something we get from a storage combinator
 func Blob(i interface{}) ([]byte, error) {
 	cp := func(r io.Reader) ([]byte, error) {
 		w := new(bytes.Buffer)
 		if _, err := io.Copy(w, r); err != nil {
 			return nil, err
+		}
+		return w.Bytes(), nil
+	}
+	encode := func(i interface{}) ([]byte, error) {
+		t := reflect.TypeOf(i)
+		v := reflect.ValueOf(i)
+		w := new(bytes.Buffer)
+		e := json.NewEncoder(w)
+		e.SetEscapeHTML(false)
+		switch t.Kind() {
+		case reflect.Slice, reflect.Array:
+			for j := 0; j < v.Len(); j++ {
+				if err := e.Encode(v.Index(j).Interface()); err != nil {
+					return nil, err
+				}
+			}
+		default:
+			if err := e.Encode(i); err != nil {
+				return nil, err
+			}
 		}
 		return w.Bytes(), nil
 	}
@@ -139,59 +160,9 @@ func Blob(i interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return x, nil
-	default:
-		return nil, fmt.Errorf("can't handle type %T", t)
-	}
-}
-
-// interprets and shows something we get from a storage combinator
-func Show(i interface{}) (string, error) {
-	cp := func(r io.Reader) (string, error) {
-		w := new(bytes.Buffer)
-		if _, err := io.Copy(w, r); err != nil {
-			return "", err
-		}
-		return w.String(), nil
-	}
-	encode := func(i interface{}) (string, error) {
-		t := reflect.TypeOf(i)
-		v := reflect.ValueOf(i)
-		w := new(bytes.Buffer)
-		e := json.NewEncoder(w)
-		e.SetEscapeHTML(false)
-		switch t.Kind() {
-		case reflect.Slice, reflect.Array:
-			for j := 0; j < v.Len(); j++ {
-				if err := e.Encode(v.Index(j).Interface()); err != nil {
-					return "", err
-				}
-			}
-		default:
-			if err := e.Encode(i); err != nil {
-				return "", err
-			}
-		}
-		return w.String(), nil
-	}
-	switch t := i.(type) {
-	case []byte:
-		return string(t), nil
-	case string:
-		return t, nil
-	case io.Reader:
-		return cp(t)
-	case io.ReadCloser:
-		x, err := cp(t)
-		if err != nil {
-			return "", err
-		}
-		if err := t.Close(); err != nil {
-			return "", err
-		}
-		return x, nil
 	case []interface{}, []FileReference, Versions, []S3Record:
 		return encode(t)
 	default:
-		return fmt.Sprint(t), nil
+		return nil, fmt.Errorf("can't handle type %T", t)
 	}
 }

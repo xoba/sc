@@ -263,7 +263,7 @@ func main() {
 		check(err)
 		i, err := ftp.Get(r)
 		check(err)
-		fmt.Println(sc.Show(i))
+		fmt.Println(show(i))
 		return
 	}
 
@@ -461,9 +461,9 @@ func main() {
 }
 
 func show(i interface{}) string {
-	s, err := sc.Show(i)
+	s, err := sc.Blob(i)
 	check(err)
-	return s
+	return string(s)
 }
 
 func Traverse(store sc.StorageCombinator, p string) error {
