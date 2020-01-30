@@ -45,7 +45,7 @@ type Listing struct {
 	Name    string
 	Size    int64
 	ModTime time.Time
-	Mode    os.FileMode
+	Mode    string
 	IsDir   bool
 }
 
@@ -54,7 +54,7 @@ func NewListing(fi os.FileInfo) Listing {
 		Name:    fi.Name(),
 		Size:    fi.Size(),
 		ModTime: fi.ModTime(),
-		Mode:    fi.Mode(),
+		Mode:    fi.Mode().String(),
 		IsDir:   fi.IsDir(),
 	}
 }
