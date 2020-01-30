@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
@@ -39,6 +41,24 @@ func (f FTPCombinator) login() (*sftp.Client, error) {
 	return sftp.NewClient(conn)
 }
 
+type Listing struct {
+	Name    string
+	Size    int64
+	ModTime time.Time
+	Mode    os.FileMode
+	IsDir   bool
+}
+
+func NewListing(fi os.FileInfo) Listing {
+	return Listing{
+		Name:    fi.Name(),
+		Size:    fi.Size(),
+		ModTime: fi.ModTime(),
+		Mode:    fi.Mode(),
+		IsDir:   fi.IsDir(),
+	}
+}
+
 func (f FTPCombinator) Get(r Reference) (interface{}, error) {
 	s, err := f.login()
 	if err != nil {
@@ -53,10 +73,6 @@ func (f FTPCombinator) Get(r Reference) (interface{}, error) {
 		}
 		p = p[1:]
 	}
-	type listing struct {
-		Name string
-		Size int64
-	}
 	list := func(dir string) (interface{}, error) {
 		w := new(bytes.Buffer)
 		e := json.NewEncoder(w)
@@ -66,7 +82,7 @@ func (f FTPCombinator) Get(r Reference) (interface{}, error) {
 			return nil, err
 		}
 		for _, fi := range list {
-			if err := e.Encode(listing{Size: fi.Size(), Name: fi.Name()}); err != nil {
+			if err := e.Encode(NewListing(fi)); err != nil {
 				return nil, err
 			}
 		}
