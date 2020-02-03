@@ -12,7 +12,8 @@ type APICombinator struct {
 }
 
 type APIEngine interface {
-	Get(r Reference) (*http.Response, error)
+	Get(Reference) (*http.Response, error)
+	Process(io.ReadCloser) (interface{}, error)
 }
 
 func NewAPICombinator(e APIEngine) *APICombinator {
@@ -32,7 +33,7 @@ func (a APICombinator) Get(r Reference) (interface{}, error) {
 		}
 		return w.Bytes(), fmt.Errorf("bad status: %q", resp.Status)
 	}
-	return resp.Body, nil
+	return a.e.Process(resp.Body)
 }
 
 func (a APICombinator) Put(Reference, interface{}) error {

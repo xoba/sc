@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
@@ -231,26 +230,19 @@ func dbInfo() (*DBInfo, error) {
 	return &m, nil
 }
 
-type engine struct {
-}
-
-func (e engine) Get(r sc.Reference) (*http.Response, error) {
-	key, err := ioutil.ReadFile("fred.txt")
-	if err != nil {
-		return nil, err
-	}
-	// modify a copy of uri:
-	u, err := url.Parse(r.URI().String())
-	if err != nil {
-		return nil, err
-	}
-	q := u.Query()
-	q.Set("api_key", strings.TrimSpace(string(key)))
-	u.RawQuery = q.Encode()
-	return http.Get(u.String())
-}
-
 func main() {
+
+	if true {
+		key, err := ioutil.ReadFile("fred.txt")
+		check(err)
+		api := sc.NewAPICombinator(sc.FredEngine{Key: key})
+		u, err := url.Parse("https://api.stlouisfed.org/fred/series/observations?series_id=GDP&file_type=xml&observation_start=2000-01-01&observation_end=2020-02-01")
+		check(err)
+		r, err := api.Get(sc.NewURI(u))
+		check(err)
+		fmt.Println(show(r))
+		return
+	}
 
 	if host != "" {
 		password := os.Getenv(passwordVar)
@@ -421,16 +413,6 @@ func main() {
 		return nil
 	}())
 	return
-
-	if false {
-		api := sc.NewAPICombinator(engine{})
-		u, err := url.Parse("https://api.stlouisfed.org/fred/series/observations?series_id=GDP&file_type=xml&observation_start=1900-01-01&observation_end=2019-12-01")
-		check(err)
-		r, err := api.Get(sc.NewURI(u))
-		check(err)
-		fmt.Println(show(r))
-		return
-	}
 
 	if false {
 		db, err := OpenDB()

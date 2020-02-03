@@ -160,7 +160,7 @@ func Blob(i interface{}) ([]byte, error) {
 			return nil, err
 		}
 		return x, nil
-	case []interface{}, []FileReference, Versions, []S3Record:
+	case Observations, []interface{}, []FileReference, Versions, []S3Record:
 		return encode(t)
 	default:
 		return nil, fmt.Errorf("can't handle type %T", t)
