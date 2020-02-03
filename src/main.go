@@ -232,6 +232,11 @@ func dbInfo() (*DBInfo, error) {
 
 func main() {
 
+	if retag {
+		check(RunRetag())
+		return
+	}
+
 	if true {
 		key, err := ioutil.ReadFile("fred.txt")
 		check(err)
@@ -256,11 +261,6 @@ func main() {
 		i, err := ftp.Get(r)
 		check(err)
 		fmt.Println(show(i))
-		return
-	}
-
-	if retag {
-		check(RunRetag())
 		return
 	}
 
