@@ -28,14 +28,22 @@ func NewDatabaseCombinator(db *sql.DB) *DatabaseCombinator {
 // header: true or false, defaults to true, whether to output a header row (metadata)
 func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 	proc := func(key string, required bool, defaultValue string) (string, error) {
-		v := strings.TrimSpace(r.URI().Query().Get(key))
-		if required && len(v) == 0 {
-			return "", fmt.Errorf("needs a %q parameter", key)
+		q := r.URI().Query()
+		v, ok := q[key]
+		if !ok {
+			if required {
+				return "", fmt.Errorf("needs a %q parameter", key)
+			}
+			return defaultValue, nil
 		}
-		if v == "" && defaultValue != "" {
-			v = defaultValue
+		switch len(v) {
+		case 0:
+			return "", fmt.Errorf("missing %q parameter", key)
+		case 1:
+			return strings.TrimSpace(v[0]), nil
+		default:
+			return "", fmt.Errorf("multiple %q parameters", key)
 		}
-		return v, nil
 	}
 	query, err := proc("query", true, "")
 	if err != nil {
