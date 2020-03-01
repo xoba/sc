@@ -13,5 +13,5 @@ require (
 	github.com/shengdoushi/base58 v1.0.0
 	github.com/snowflakedb/gosnowflake v1.3.4
 	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d
-	golang.org/x/sys v0.0.0-20200301040627-c5d0d7b4ec88 // indirect
+	golang.org/x/sys v0.0.0-20200301204400-5d559ad92b82 // indirect
 )
