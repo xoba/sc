@@ -44,12 +44,16 @@ func mkdir(p string) error {
 	return nil
 }
 
-func (fs FileSystem) path(r Reference) string {
+func (fs FileSystem) path(r Reference) (string, error) {
 	p := r.URI().Path
 	if p == "" {
-		p = hashedReference(r).URI().String()
+		er, err := encode(r)
+		if err != nil {
+			return "", err
+		}
+		p = er.URI().String()
 	}
-	return filepath.Join(fs.mount, filepath.Clean("/"+p))
+	return filepath.Join(fs.mount, filepath.Clean("/"+p)), nil
 }
 
 type FileReference struct {
@@ -86,7 +90,10 @@ func (f FileReference) String() string {
 }
 
 func (fs FileSystem) Get(r Reference) (interface{}, error) {
-	p := fs.path(r)
+	p, err := fs.path(r)
+	if err != nil {
+		return nil, err
+	}
 	fi, err := os.Stat(p)
 	if err != nil {
 		return nil, wrapNotFound(r, err)
@@ -110,7 +117,10 @@ func (fs FileSystem) Put(r Reference, i interface{}) error {
 }
 
 func (fs FileSystem) put(r Reference, i interface{}, flags int) error {
-	p := fs.path(r)
+	p, err := fs.path(r)
+	if err != nil {
+		return err
+	}
 	if err := mkdir(filepath.Dir(p)); err != nil {
 		return err
 	}
@@ -151,7 +161,11 @@ func (fs FileSystem) put(r Reference, i interface{}, flags int) error {
 }
 
 func (fs FileSystem) Delete(r Reference) error {
-	return os.RemoveAll(fs.path(r))
+	p, err := fs.path(r)
+	if err != nil {
+		return err
+	}
+	return os.RemoveAll(p)
 }
 
 // appends to the file or creates it

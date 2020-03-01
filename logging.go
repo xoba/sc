@@ -29,19 +29,22 @@ type LogRecord struct {
 	Timestamp time.Time
 }
 
-func newLogRecord(method string, source Reference) (LogRecord, Reference) {
-	target := hashedReference(source)
-	record := LogRecord{
+func newLogRecord(method string, source Reference) (*LogRecord, Reference, error) {
+	target, err := encode(source)
+	if err != nil {
+		return nil, nil, err
+	}
+	record := &LogRecord{
 		ID:        uuid.New().String(),
 		SourceURI: source.URI().String(),
 		TargetURI: target.URI().String(),
 		Method:    method,
 		Timestamp: time.Now().UTC(),
 	}
-	return record, target
+	return record, target, nil
 }
 
-func (c LoggingCombinator) log(record LogRecord) error {
+func (c LoggingCombinator) log(record *LogRecord) error {
 	if err := c.list.Merge(c.listRef, record); err != nil {
 		return err
 	}
@@ -52,7 +55,10 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 	if r.URI().String() == c.listRef.URI().String() {
 		return c.list.Get(c.listRef)
 	}
-	record, target := newLogRecord("get", r)
+	record, target, err := newLogRecord("get", r)
+	if err != nil {
+		return nil, err
+	}
 	i, err := c.storage.Get(target)
 	if err != nil {
 		return nil, err
@@ -66,7 +72,10 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 type mutatorFunc func(Reference, interface{}) error
 
 func (c LoggingCombinator) update(r Reference, i interface{}, method string, mutator mutatorFunc) error {
-	record, target := newLogRecord(method, r)
+	record, target, err := newLogRecord(method, r)
+	if err != nil {
+		return err
+	}
 	if err := mutator(target, i); err != nil {
 		return err
 	}

@@ -14,6 +14,7 @@ import (
 	"path"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kms"
@@ -230,10 +231,35 @@ func dbInfo() (*DBInfo, error) {
 	return &m, nil
 }
 
+func testhashes() {
+	var c sc.StorageCombinator
+	{
+		fs, err := sc.NewFileSystem("diskstore")
+		check(err)
+		c = fs
+	}
+	c = sc.NewHashedContent(c)
+	blob := []byte(fmt.Sprintf("test 123 at %s\n", time.Now()))
+	fmt.Printf("going to store:\n%q\n", string(blob))
+	r, err := sc.NewHashURI(blob)
+	check(err)
+	fmt.Println(r)
+	check(c.Put(r, blob))
+
+	i, err := c.Get(r)
+	check(err)
+	fmt.Printf("got:\n%q\n", show(i))
+}
+
 func main() {
 
 	if retag {
 		check(RunRetag())
+		return
+	}
+
+	if true {
+		testhashes()
 		return
 	}
 
@@ -380,38 +406,6 @@ func main() {
 		return nil
 	}())
 
-	return
-
-	check(func() error {
-		const dir = "/tmp/sc_cache"
-		os.RemoveAll(dir)
-		fs, err := sc.NewFileSystem(dir)
-		if err != nil {
-			return err
-		}
-		target := sc.NewVersioning(sc.NewHashedRefs(fs))
-		r := sc.NewRef("test.txt")
-		check(target.Put(r, "howdy 1\n"))
-		check(target.Put(r, "howdy 2\n"))
-		i, err := target.Get(r)
-		check(err)
-		fmt.Println(show(i))
-		{
-			vr, err := sc.ParseRef("test.txt#version=2")
-			check(err)
-			version, err := target.Get(vr)
-			check(err)
-			fmt.Println("version:", show(version))
-		}
-		{
-			vr, err := sc.ParseRef("test.txt#versions")
-			check(err)
-			version, err := target.Get(vr)
-			check(err)
-			fmt.Println("versions:", show(version))
-		}
-		return nil
-	}())
 	return
 
 	if false {

@@ -1,10 +1,11 @@
 *.test
 *~
 bin
+cachedir
 diskstore
+fred.txt
 gopath
 kms.txt
+logging
 merging
 snowflake.json
-fred.txt
-logging

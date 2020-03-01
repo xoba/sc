@@ -82,13 +82,16 @@ func (fs S3KeyValue) parseS3Reference(r Reference) (*S3Reference, error) {
 	}
 	var key string
 	if u.Path == "" {
-		key = hashedReference(r).URI().String()
+		er, err := encode(r)
+		if err != nil {
+			return nil, err
+		}
+		key = er.URI().String()
 	} else {
 		key = removeLeadingSlashes(u.Path)
 	}
 	s3ref.Key = path.Join(fs.prefix, key)
 	return &s3ref, nil
-
 }
 
 func (fs S3KeyValue) Get(r Reference) (interface{}, error) {
