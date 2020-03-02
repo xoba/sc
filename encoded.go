@@ -1,12 +1,5 @@
 package sc
 
-import (
-	"crypto/md5"
-	"encoding/hex"
-	"fmt"
-	"net/url"
-)
-
 type EncodedRefs struct {
 	c StorageCombinator
 }
@@ -16,13 +9,11 @@ func NewEncodedRefs(c StorageCombinator) EncodedRefs {
 }
 
 func encode(r Reference) (Reference, error) {
-	fmt.Printf("encoding %s\n", r)
-	var u url.URL
-	u.Scheme = "md5"
-	h := md5.New()
-	h.Write([]byte(r.URI().String()))
-	u.Opaque = hex.EncodeToString(h.Sum(nil))
-	return NewURI(&u), nil
+	u := r.URI()
+	if u.Scheme == DefaultHashAlgo {
+		return r, nil
+	}
+	return NewHashURI([]byte(u.String()))
 }
 
 func (e EncodedRefs) Get(r Reference) (interface{}, error) {
