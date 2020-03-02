@@ -89,7 +89,9 @@ func RunRetag() error {
 	})
 	next := list[len(list)-1]
 	next.v.Patch += 1
-	if false {
+	if true {
+		next.v.Pre = nil
+	} else {
 		pr, err := semver.NewPRVersion(time.Now().UTC().Format("20060102T150405Z"))
 		check(err)
 		next.v.Pre = []semver.PRVersion{pr}
