@@ -9,7 +9,12 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-// enforces refs and content to be related by a hash
+const (
+	DefaultHashAlgo = "shake256"
+	HashURIScheme   = "hash"
+)
+
+// enforces refs and content to be related by a hash.
 // references are of form hash://<algo>/<value>
 // where <algo> is name of algorithm,
 // <value> is base58-encoded value of hash
@@ -39,11 +44,11 @@ func (h HashURI) String() string {
 }
 
 func NewHashURI(content []byte) (*HashURI, error) {
-	hash, err := Hash(HashAlgo, content)
+	hash, err := Hash(DefaultHashAlgo, content)
 	if err != nil {
 		return nil, err
 	}
-	return &HashURI{algorithm: HashAlgo, value: hash}, nil
+	return &HashURI{algorithm: DefaultHashAlgo, value: hash}, nil
 }
 
 func ParseHashRef(r Reference) (*HashURI, error) {
@@ -51,7 +56,7 @@ func ParseHashRef(r Reference) (*HashURI, error) {
 	if u.Scheme != HashURIScheme {
 		return nil, fmt.Errorf("unrecognized scheme %q", u.Scheme)
 	}
-	if u.Host != HashAlgo {
+	if u.Host != DefaultHashAlgo {
 		return nil, fmt.Errorf("unrecognized algo %q", u.Host)
 	}
 	p := u.Path
@@ -115,13 +120,8 @@ func (hc HashedContent) Merge(r Reference, i interface{}) error {
 	return unimplemented(hc, "Merge")
 }
 
-const (
-	HashAlgo      = "shake256"
-	HashURIScheme = "hash"
-)
-
 func Hash(algo string, buf []byte) ([]byte, error) {
-	if algo != HashAlgo {
+	if algo != DefaultHashAlgo {
 		return nil, fmt.Errorf("hash algo %q not supported", algo)
 	}
 	h := sha3.NewShake256()
