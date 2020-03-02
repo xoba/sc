@@ -33,6 +33,13 @@ type HashReference struct {
 	value     []byte
 }
 
+func (h HashReference) Algo() string {
+	return h.algorithm
+}
+func (h HashReference) Value() []byte {
+	return h.value
+}
+
 func (h HashReference) URI() *url.URL {
 	var u url.URL
 	u.Scheme = h.algorithm
@@ -42,14 +49,6 @@ func (h HashReference) URI() *url.URL {
 
 func (h HashReference) String() string {
 	return h.URI().String()
-}
-
-func NewHashReference(algo string, content []byte) (*HashReference, error) {
-	hash, err := Hash(algo, content)
-	if err != nil {
-		return nil, err
-	}
-	return &HashReference{algorithm: algo, value: hash}, nil
 }
 
 func ParseHashRef(r Reference) (*HashReference, error) {
@@ -81,7 +80,7 @@ func (hc HashedContent) Get(r Reference) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	h1, err := NewHashReference(r.URI().Scheme, b)
+	h1, err := Hash(r.URI().Scheme, b)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +99,7 @@ func (hc HashedContent) Put(r Reference, i interface{}) error {
 	if err != nil {
 		return err
 	}
-	h1, err := NewHashReference(r.URI().Scheme, b)
+	h1, err := Hash(r.URI().Scheme, b)
 	if err != nil {
 		return err
 	}
@@ -118,7 +117,8 @@ func (hc HashedContent) Merge(r Reference, i interface{}) error {
 	return unimplemented(hc, "Merge")
 }
 
-func Hash(algo string, buf []byte) ([]byte, error) {
+func Hash(algo string, buf []byte) (*HashReference, error) {
+	var value []byte
 	switch algo {
 	case Shake256:
 		h := sha3.NewShake256()
@@ -129,12 +129,13 @@ func Hash(algo string, buf []byte) ([]byte, error) {
 		if _, err := h.Read(out); err != nil {
 			return nil, err
 		}
-		return out, nil
+		value = out
 	case MD5:
 		h := md5.New()
 		h.Write(buf)
-		return h.Sum(nil), nil
+		value = h.Sum(nil)
 	default:
 		return nil, fmt.Errorf("hash algo %q not supported", algo)
 	}
+	return &HashReference{algorithm: algo, value: value}, nil
 }

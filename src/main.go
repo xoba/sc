@@ -248,7 +248,7 @@ func testhashes() {
 	c = sc.NewHashedContent(c)
 	blob := []byte(fmt.Sprintf("test 123 at %s\n", time.Now()))
 	fmt.Printf("going to store:\n%q\n", string(blob))
-	r, err := sc.NewHashReference(sc.DefaultHashAlgo, blob)
+	r, err := sc.Hash(sc.DefaultHashAlgo, blob)
 	check(err)
 	fmt.Println(r)
 	check(c.Put(r, blob))
