@@ -89,10 +89,13 @@ func RunRetag() error {
 		return list[i].v.LT(list[j].v)
 	})
 	next := list[len(list)-1]
-	next.v.Patch += 1
-	pr, err := semver.NewPRVersion(time.Now().UTC().Format("20060102T150405Z"))
-	check(err)
-	next.v.Pre = []semver.PRVersion{pr}
+	if false {
+		next.v.Patch += 1
+	} else {
+		pr, err := semver.NewPRVersion(time.Now().UTC().Format("20060102T150405Z"))
+		check(err)
+		next.v.Pre = []semver.PRVersion{pr}
+	}
 	fmt.Printf("next = %v\n", next)
 	log.Fatal(next.String())
 	if _, err := runCmd("git", "tag", next.String()); err != nil {
