@@ -28,31 +28,31 @@ func NewHashedContent(c StorageCombinator) HashedContent {
 	return HashedContent{c: c}
 }
 
-type HashURI struct {
+type HashReference struct {
 	algorithm string
 	value     []byte
 }
 
-func (h HashURI) URI() *url.URL {
+func (h HashReference) URI() *url.URL {
 	var u url.URL
 	u.Scheme = h.algorithm
 	u.Opaque = Base58Encode(h.value)
 	return &u
 }
 
-func (h HashURI) String() string {
+func (h HashReference) String() string {
 	return h.URI().String()
 }
 
-func NewHashURI(algo string, content []byte) (*HashURI, error) {
+func NewHashReference(algo string, content []byte) (*HashReference, error) {
 	hash, err := Hash(algo, content)
 	if err != nil {
 		return nil, err
 	}
-	return &HashURI{algorithm: algo, value: hash}, nil
+	return &HashReference{algorithm: algo, value: hash}, nil
 }
 
-func ParseHashRef(r Reference) (*HashURI, error) {
+func ParseHashRef(r Reference) (*HashReference, error) {
 	u := r.URI()
 	var decoded []byte
 	switch u.Scheme {
@@ -65,7 +65,7 @@ func ParseHashRef(r Reference) (*HashURI, error) {
 	default:
 		return nil, fmt.Errorf("unrecognized algo %q", u.Scheme)
 	}
-	return &HashURI{algorithm: u.Scheme, value: decoded}, nil
+	return &HashReference{algorithm: u.Scheme, value: decoded}, nil
 }
 
 func (hc HashedContent) Get(r Reference) (interface{}, error) {
@@ -81,7 +81,7 @@ func (hc HashedContent) Get(r Reference) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	h1, err := NewHashURI(r.URI().Scheme, b)
+	h1, err := NewHashReference(r.URI().Scheme, b)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func (hc HashedContent) Put(r Reference, i interface{}) error {
 	if err != nil {
 		return err
 	}
-	h1, err := NewHashURI(r.URI().Scheme, b)
+	h1, err := NewHashReference(r.URI().Scheme, b)
 	if err != nil {
 		return err
 	}
