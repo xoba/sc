@@ -2,6 +2,7 @@ package sc
 
 import (
 	"bytes"
+	"crypto/md5"
 	"fmt"
 	"net/url"
 
@@ -9,7 +10,10 @@ import (
 )
 
 const (
-	DefaultHashAlgo = "shake256"
+	DefaultHashAlgo = MD5
+
+	MD5      = "md5"
+	Shake256 = "shake256"
 )
 
 // enforces refs and content to be related by a hash.
@@ -31,7 +35,7 @@ type HashURI struct {
 
 func (h HashURI) URI() *url.URL {
 	var u url.URL
-	u.Scheme = DefaultHashAlgo
+	u.Scheme = h.algorithm
 	u.Opaque = Base58Encode(h.value)
 	return &u
 }
@@ -40,24 +44,28 @@ func (h HashURI) String() string {
 	return h.URI().String()
 }
 
-func NewHashURI(content []byte) (*HashURI, error) {
-	hash, err := Hash(DefaultHashAlgo, content)
+func NewHashURI(algo string, content []byte) (*HashURI, error) {
+	hash, err := Hash(algo, content)
 	if err != nil {
 		return nil, err
 	}
-	return &HashURI{algorithm: DefaultHashAlgo, value: hash}, nil
+	return &HashURI{algorithm: algo, value: hash}, nil
 }
 
 func ParseHashRef(r Reference) (*HashURI, error) {
 	u := r.URI()
-	if u.Scheme != DefaultHashAlgo {
+	var decoded []byte
+	switch u.Scheme {
+	case Shake256, MD5:
+		dec, err := Base58Decode(u.Opaque)
+		if err != nil {
+			return nil, err
+		}
+		decoded = dec
+	default:
 		return nil, fmt.Errorf("unrecognized algo %q", u.Scheme)
 	}
-	dec, err := Base58Decode(u.Opaque)
-	if err != nil {
-		return nil, err
-	}
-	return &HashURI{algorithm: u.Host, value: dec}, nil
+	return &HashURI{algorithm: u.Scheme, value: decoded}, nil
 }
 
 func (hc HashedContent) Get(r Reference) (interface{}, error) {
@@ -73,7 +81,7 @@ func (hc HashedContent) Get(r Reference) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	h1, err := NewHashURI(b)
+	h1, err := NewHashURI(r.URI().Scheme, b)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +100,7 @@ func (hc HashedContent) Put(r Reference, i interface{}) error {
 	if err != nil {
 		return err
 	}
-	h1, err := NewHashURI(b)
+	h1, err := NewHashURI(r.URI().Scheme, b)
 	if err != nil {
 		return err
 	}
@@ -111,16 +119,22 @@ func (hc HashedContent) Merge(r Reference, i interface{}) error {
 }
 
 func Hash(algo string, buf []byte) ([]byte, error) {
-	if algo != DefaultHashAlgo {
+	switch algo {
+	case Shake256:
+		h := sha3.NewShake256()
+		if _, err := h.Write(buf); err != nil {
+			return nil, err
+		}
+		out := make([]byte, 64)
+		if _, err := h.Read(out); err != nil {
+			return nil, err
+		}
+		return out, nil
+	case MD5:
+		h := md5.New()
+		h.Write(buf)
+		return h.Sum(nil), nil
+	default:
 		return nil, fmt.Errorf("hash algo %q not supported", algo)
 	}
-	h := sha3.NewShake256()
-	if _, err := h.Write(buf); err != nil {
-		return nil, err
-	}
-	out := make([]byte, 64)
-	if _, err := h.Read(out); err != nil {
-		return nil, err
-	}
-	return out, nil
 }
