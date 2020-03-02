@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/url"
 	"os"
 	"os/exec"
@@ -97,7 +96,6 @@ func RunRetag() error {
 		next.v.Pre = []semver.PRVersion{pr}
 	}
 	fmt.Printf("next = %v\n", next)
-	log.Fatal(next.String())
 	if _, err := runCmd("git", "tag", next.String()); err != nil {
 		return err
 	}
