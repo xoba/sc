@@ -4,18 +4,16 @@ import (
 	"bytes"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"golang.org/x/crypto/sha3"
 )
 
 const (
 	DefaultHashAlgo = "shake256"
-	HashURIScheme   = "hash"
 )
 
 // enforces refs and content to be related by a hash.
-// references are of form hash://<algo>/<value>
+// references are of form <algo>:<value>
 // where <algo> is name of algorithm,
 // <value> is base58-encoded value of hash
 type HashedContent struct {
@@ -33,9 +31,8 @@ type HashURI struct {
 
 func (h HashURI) URI() *url.URL {
 	var u url.URL
-	u.Scheme = HashURIScheme
-	u.Host = h.algorithm
-	u.Path = Base58Encode(h.value)
+	u.Scheme = DefaultHashAlgo
+	u.Opaque = Base58Encode(h.value)
 	return &u
 }
 
@@ -53,17 +50,10 @@ func NewHashURI(content []byte) (*HashURI, error) {
 
 func ParseHashRef(r Reference) (*HashURI, error) {
 	u := r.URI()
-	if u.Scheme != HashURIScheme {
-		return nil, fmt.Errorf("unrecognized scheme %q", u.Scheme)
+	if u.Scheme != DefaultHashAlgo {
+		return nil, fmt.Errorf("unrecognized algo %q", u.Scheme)
 	}
-	if u.Host != DefaultHashAlgo {
-		return nil, fmt.Errorf("unrecognized algo %q", u.Host)
-	}
-	p := u.Path
-	if strings.HasPrefix(p, "/") {
-		p = p[1:]
-	}
-	dec, err := Base58Decode(p)
+	dec, err := Base58Decode(u.Opaque)
 	if err != nil {
 		return nil, err
 	}
