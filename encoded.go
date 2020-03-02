@@ -1,5 +1,7 @@
 package sc
 
+import "net/url"
+
 type EncodedRefs struct {
 	c StorageCombinator
 }
@@ -9,11 +11,14 @@ func NewEncodedRefs(c StorageCombinator) EncodedRefs {
 }
 
 func encode(r Reference) (Reference, error) {
-	u := r.URI()
-	if u.Scheme == DefaultHashAlgo {
-		return r, nil
+	h, err := Hash(DefaultHashAlgo, []byte(r.URI().String()))
+	if err != nil {
+		return nil, err
 	}
-	return NewHashURI([]byte(u.String()))
+	var u url.URL
+	u.Scheme = DefaultHashAlgo
+	u.Opaque = Base58Encode(h)
+	return NewURI(&u), nil
 }
 
 func (e EncodedRefs) Get(r Reference) (interface{}, error) {
