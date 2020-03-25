@@ -166,3 +166,5 @@ func Blob(i interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("can't handle type %T", t)
 	}
 }
+
+const HashPrefix = `EAE18B82-F047-4913-BFE7-CF5B9E3B35AB`
