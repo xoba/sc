@@ -3,6 +3,7 @@ package sc
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"net/url"
 )
 
@@ -22,6 +23,7 @@ func hashedReference(r Reference) Reference {
 	var u url.URL
 	u.Scheme = "md5"
 	u.Opaque = hex.EncodeToString(h.Sum(nil))
+	fmt.Printf("hashed %v to %s\n", r, u.String())
 	return NewURI(&u)
 }
 
