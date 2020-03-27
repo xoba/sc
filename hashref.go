@@ -23,7 +23,7 @@ func hashedReference(r Reference) Reference {
 	var u url.URL
 	u.Scheme = "md5"
 	u.Opaque = hex.EncodeToString(h.Sum(nil))
-	fmt.Printf("hashed %v to %s\n", r, u.String())
+	fmt.Printf("hashed %q to %q\n", r.URI().String(), u.String())
 	return NewURI(&u)
 }
 
