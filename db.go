@@ -20,7 +20,7 @@ func NewDatabaseCombinator(db *sql.DB) *DatabaseCombinator {
 	return &DatabaseCombinator{db: db}
 }
 
-// query parameters:
+// all that matters are the uri's query parameters:
 // query: the query (required)
 // format: csv or json (defaults to csv)
 // na: the "null" string, defaults to na
@@ -104,6 +104,8 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 			case "varbinary", "uniqueidentifier", "image":
 				var b []byte
 				f = &b
+			case "int4":
+				f = &sql.NullInt64{}
 			default:
 				return nil, fmt.Errorf("unhandled scan type %q for col %q of type %q",
 					t,
