@@ -89,7 +89,7 @@ func (dc DatabaseCombinator) Get(r Reference) (interface{}, error) {
 		switch t := c.ScanType().Name(); t {
 		case "float64":
 			f = &sql.NullFloat64{}
-		case "int64":
+		case "int64", "int32":
 			f = &sql.NullInt64{}
 		case "string":
 			f = &sql.NullString{}
