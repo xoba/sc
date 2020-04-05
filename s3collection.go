@@ -182,24 +182,55 @@ func (c S3Collection) store(recs ...S3Record) error {
 	return nil
 }
 
+// divides a list into sub-lists of maximal length
+func divide(list []string, max int) (out [][]string) {
+	if len(list) < max {
+		return [][]string{list}
+	}
+	left, right := halve(list)
+	out = append(out, divide(left, max)...)
+	out = append(out, divide(right, max)...)
+	return
+}
+
+// divides a list roughly in two
+func halve(list []string) (left, right []string) {
+	for _, x := range list {
+		if len(left) < len(right) {
+			left = append(left, x)
+		} else {
+			right = append(right, x)
+		}
+	}
+	return
+}
+
+func (c S3Collection) delete(keys []string) error {
+	for _, list := range divide(keys, 1000) {
+		doi := &s3.DeleteObjectsInput{
+			Bucket: aws.String(c.bucket),
+			Delete: &s3.Delete{
+				Quiet: aws.Bool(true),
+			},
+		}
+		for _, k := range list {
+			doi.Delete.Objects = append(doi.Delete.Objects, &s3.ObjectIdentifier{
+				Key: aws.String(k),
+			})
+		}
+		if _, err := c.svc.DeleteObjects(doi); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c S3Collection) consolidate(keys []string, records []S3Record) error {
 	fmt.Printf("consolidating %d keys\n", len(keys))
 	if err := c.store(records...); err != nil {
 		return err
 	}
-	delete := &s3.Delete{
-		Quiet: aws.Bool(true),
-	}
-	doi := &s3.DeleteObjectsInput{
-		Bucket: aws.String(c.bucket),
-		Delete: delete,
-	}
-	for _, k := range keys {
-		delete.Objects = append(delete.Objects, &s3.ObjectIdentifier{
-			Key: aws.String(k),
-		})
-	}
-	if _, err := c.svc.DeleteObjects(doi); err != nil {
+	if err := c.delete(keys); err != nil {
 		return err
 	}
 	return nil
