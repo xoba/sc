@@ -204,10 +204,10 @@ func halve(list []string) (left, right []string) {
 	return
 }
 
-func (c S3Collection) delete(keys []string) error {
+func DeleteKeys(svc *s3.S3, bucket string, keys []string) error {
 	for _, list := range divide(keys, 1000) {
 		doi := &s3.DeleteObjectsInput{
-			Bucket: aws.String(c.bucket),
+			Bucket: aws.String(bucket),
 			Delete: &s3.Delete{
 				Quiet: aws.Bool(true),
 			},
@@ -217,11 +217,15 @@ func (c S3Collection) delete(keys []string) error {
 				Key: aws.String(k),
 			})
 		}
-		if _, err := c.svc.DeleteObjects(doi); err != nil {
+		if _, err := svc.DeleteObjects(doi); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (c S3Collection) delete(keys []string) error {
+	return DeleteKeys(c.svc, c.bucket, keys)
 }
 
 func (c S3Collection) consolidate(keys []string, records []S3Record) error {
