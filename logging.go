@@ -1,8 +1,9 @@
 package sc
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
+	"io"
 	"time"
 
 	"github.com/google/uuid"
@@ -63,10 +64,16 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("got %s\n", string(b))
 		var out []LogRecord
-		if err := json.Unmarshal(b, &out); err != nil {
-			return nil, err
+		d := json.NewDecoder(bytes.NewReader(b))
+		for {
+			var r LogRecord
+			if err := d.Decode(&r); err == io.EOF {
+				break
+			} else if err != nil {
+				return nil, err
+			}
+			out = append(out, r)
 		}
 		return out, nil
 	}
