@@ -133,7 +133,6 @@ func (c S3Collection) Get(r Reference) (interface{}, error) {
 	sort.Slice(sorted, func(i, j int) bool {
 		return sorted[i].Timestamp.Before(sorted[j].Timestamp)
 	})
-	fmt.Printf("%d keys\n", len(keys))
 	if len(keys) > MaxKeys {
 		if err := c.consolidate(keys, sorted); err != nil {
 			return nil, err
@@ -226,7 +225,6 @@ func (c S3Collection) delete(keys []string) error {
 }
 
 func (c S3Collection) consolidate(keys []string, records []S3Record) error {
-	fmt.Printf("consolidating %d keys\n", len(keys))
 	if err := c.store(records...); err != nil {
 		return err
 	}
