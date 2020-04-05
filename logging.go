@@ -2,6 +2,7 @@ package sc
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -62,6 +63,7 @@ func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+		fmt.Println("got %s\n", string(b))
 		var out []LogRecord
 		if err := json.Unmarshal(b, &out); err != nil {
 			return nil, err
