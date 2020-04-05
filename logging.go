@@ -32,6 +32,11 @@ type LogRecord struct {
 	Timestamp time.Time
 }
 
+func (lr LogRecord) String() string {
+	buf, _ := json.Marshal(lr)
+	return string(buf)
+}
+
 func newLogRecord(method string, source Reference) (*LogRecord, Reference, error) {
 	target, err := encode(source)
 	if err != nil {
