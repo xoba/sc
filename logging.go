@@ -1,6 +1,7 @@
 package sc
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -53,7 +54,19 @@ func (c LoggingCombinator) log(record *LogRecord) error {
 
 func (c LoggingCombinator) Get(r Reference) (interface{}, error) {
 	if r.URI().String() == c.listRef.URI().String() {
-		return c.list.Get(c.listRef)
+		i, err := c.list.Get(c.listRef)
+		if err != nil {
+			return nil, err
+		}
+		b, err := Blob(i)
+		if err != nil {
+			return nil, err
+		}
+		var out []LogRecord
+		if err := json.Unmarshal(b, &out); err != nil {
+			return nil, err
+		}
+		return out, nil
 	}
 	record, target, err := newLogRecord("get", r)
 	if err != nil {
