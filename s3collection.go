@@ -197,7 +197,9 @@ func (c S3Collection) store(recs ...S3Record) error {
 
 // divides a list into sub-lists of maximal length
 func divide(list []string, max int) (out [][]string) {
-	if len(list) < max {
+	if len(list) == 0 {
+		return nil
+	} else if len(list) < max {
 		return [][]string{list}
 	}
 	left, right := halve(list)
