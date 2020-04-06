@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"path"
 	"sort"
 	"strings"
@@ -22,6 +23,7 @@ type S3Collection struct {
 	prefix string
 	svc    *s3.S3
 	ref    Reference
+	debug  bool
 }
 
 type S3Record struct {
@@ -32,8 +34,12 @@ type S3Record struct {
 
 const MaxKeys = 10
 
-// ref is the one single valid reference for Get and Merge methods
 func NewS3Collection(bucket, prefix string, ref Reference, svc *s3.S3) (*S3Collection, error) {
+	return NewS3CollectionDebug(bucket, prefix, ref, svc, false)
+}
+
+// ref is the one single valid reference for Get and Merge methods
+func NewS3CollectionDebug(bucket, prefix string, ref Reference, svc *s3.S3, debug bool) (*S3Collection, error) {
 	if bucket == "" {
 		return nil, fmt.Errorf("needs bucket")
 	}
@@ -55,6 +61,7 @@ func NewS3Collection(bucket, prefix string, ref Reference, svc *s3.S3) (*S3Colle
 		prefix: prefix,
 		svc:    svc,
 		ref:    ref,
+		debug:  debug,
 	}, nil
 }
 
@@ -99,33 +106,40 @@ func (c S3Collection) Get(r Reference) (interface{}, error) {
 	}
 	var keys []string
 	records := make(map[string]S3Record)
-	var marker string
-	for {
-		resp, err := c.svc.ListObjects(&s3.ListObjectsInput{
+
+	{
+		var n int
+		var listError error
+		if err := c.svc.ListObjectsV2Pages(&s3.ListObjectsV2Input{
 			Bucket:  aws.String(c.bucket),
-			Marker:  aws.String(marker),
 			MaxKeys: aws.Int64(1000),
 			Prefix:  aws.String(c.prefix),
-		})
-		if err != nil {
+		}, func(output *s3.ListObjectsV2Output, lastPage bool) bool {
+			if c.debug {
+				fmt.Fprintf(os.Stderr, "going to list/load %d/%d records\n", n, len(output.Contents))
+			}
+			for _, o := range output.Contents {
+				n++
+				keys = append(keys, *o.Key)
+				recs, err := load(*o.Key)
+				if err != nil {
+					listError = err
+					return false
+				}
+				for _, x := range recs {
+					records[x.ID] = x
+				}
+			}
+			return true
+		}); err != nil {
 			return nil, err
 		}
-		for _, o := range resp.Contents {
-			keys = append(keys, *o.Key)
-			recs, err := load(*o.Key)
-			if err != nil {
-				return nil, err
-			}
-			for _, x := range recs {
-				records[x.ID] = x
-			}
-		}
-		if *resp.IsTruncated {
-			marker = *resp.Contents[len(resp.Contents)-1].Key
-		} else {
-			break
+
+		if listError != nil {
+			return nil, listError
 		}
 	}
+
 	var sorted []S3Record
 	for _, x := range records {
 		sorted = append(sorted, x)
@@ -229,6 +243,9 @@ func (c S3Collection) delete(keys []string) error {
 }
 
 func (c S3Collection) consolidate(keys []string, records []S3Record) error {
+	if c.debug {
+		fmt.Fprintf(os.Stderr, "consolidating %d keys\n", len(keys))
+	}
 	if err := c.store(records...); err != nil {
 		return err
 	}
