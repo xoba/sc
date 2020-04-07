@@ -195,10 +195,13 @@ func (c S3Collection) store(recs ...S3Record) error {
 	return nil
 }
 
-// divides a list into sub-lists of maximal length
-func divide(list []string, max int) (out [][]string) {
-	if len(list) == 0 {
+// Divide divides a list into sub-lists of maximal length
+func Divide(list []string, max int) (out [][]string) {
+	switch {
+	case len(list) == 0:
 		return
+	case len(list) < max:
+		return [][]string{list}
 	}
 	add := func(lists [][]string) {
 		for _, x := range lists {
@@ -208,14 +211,14 @@ func divide(list []string, max int) (out [][]string) {
 			out = append(out, x)
 		}
 	}
-	left, right := halve(list)
-	add(divide(left, max))
-	add(divide(right, max))
+	left, right := Halve(list)
+	add(Divide(left, max))
+	add(Divide(right, max))
 	return
 }
 
-// divides a list roughly in two
-func halve(list []string) (left, right []string) {
+// Halve divides a list roughly in two
+func Halve(list []string) (left, right []string) {
 	for _, x := range list {
 		if len(left) < len(right) {
 			left = append(left, x)
@@ -227,7 +230,7 @@ func halve(list []string) (left, right []string) {
 }
 
 func DeleteKeys(svc *s3.S3, bucket string, keys []string) error {
-	for _, list := range divide(keys, 1000) {
+	for _, list := range Divide(keys, 1000) {
 		doi := &s3.DeleteObjectsInput{
 			Bucket: aws.String(bucket),
 			Delete: &s3.Delete{
