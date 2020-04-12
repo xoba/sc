@@ -230,6 +230,12 @@ func Halve(list []string) (left, right []string) {
 }
 
 func DeleteKeys(svc *s3.S3, bucket string, keys []string) error {
+	if bucket == "" {
+		return fmt.Errorf("no bucket provided")
+	}
+	if len(keys) == 0 {
+		return nil
+	}
 	for _, list := range Divide(keys, 1000) {
 		doi := &s3.DeleteObjectsInput{
 			Bucket: aws.String(bucket),

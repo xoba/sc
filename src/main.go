@@ -266,6 +266,15 @@ func main() {
 	}
 
 	if true {
+		p, err := session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		})
+		check(err)
+		check(sc.DeleteKeys(s3.New(p), bucket, []string{"5766FA40-0622-457E-A898-F6EA68061388"}))
+		return
+	}
+
+	if true {
 		testhashes()
 		return
 	}
